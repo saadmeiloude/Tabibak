@@ -1,0 +1,315 @@
+import 'package:flutter/material.dart';
+import '../../core/constants/colors.dart';
+import '../../services/data_service.dart';
+
+class PatientListScreen extends StatefulWidget {
+  const PatientListScreen({super.key});
+
+  @override
+  State<PatientListScreen> createState() => _PatientListScreenState();
+}
+
+class _PatientListScreenState extends State<PatientListScreen> {
+  List<Map<String, dynamic>> _patients = [];
+  List<Map<String, dynamic>> _filteredPatients = [];
+  final TextEditingController _searchController = TextEditingController();
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPatients();
+  }
+
+  Future<void> _loadPatients() async {
+    setState(() => _isLoading = true);
+    await DataService.init();
+    final result = await DataService.getPatients();
+
+    if (mounted) {
+      setState(() {
+        if (result['success']) {
+          _patients = List<Map<String, dynamic>>.from(result['patients']);
+          _filteredPatients = _patients;
+        }
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _filterPatients(String query) {
+    if (query.isEmpty) {
+      setState(() {
+        _filteredPatients = _patients;
+      });
+      return;
+    }
+
+    final filtered = _patients.where((patient) {
+      final name = patient['name']?.toString().toLowerCase() ?? '';
+      final id = patient['id']?.toString().toLowerCase() ?? '';
+      return name.contains(query.toLowerCase()) ||
+          id.contains(query.toLowerCase());
+    }).toList();
+
+    setState(() {
+      _filteredPatients = filtered;
+    });
+  }
+
+  Future<void> _showAddPatientDialog() async {
+    final nameController = TextEditingController();
+    final idController = TextEditingController();
+    final ageController = TextEditingController();
+    final genderController = TextEditingController();
+    final bloodTypeController = TextEditingController();
+    final allergiesController = TextEditingController();
+
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('إضافة مريض جديد'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'اسم المريض',
+                    border: OutlineInputBorder(),
+                  ),
+                  textAlign: TextAlign.right,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: idController,
+                  decoration: const InputDecoration(
+                    labelText: 'الرقم التعريفي',
+                    border: OutlineInputBorder(),
+                  ),
+                  textAlign: TextAlign.right,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: ageController,
+                  decoration: const InputDecoration(
+                    labelText: 'العمر',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.right,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: genderController,
+                  decoration: const InputDecoration(
+                    labelText: 'الجنس',
+                    border: OutlineInputBorder(),
+                  ),
+                  textAlign: TextAlign.right,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: bloodTypeController,
+                  decoration: const InputDecoration(
+                    labelText: 'فصيلة الدم',
+                    border: OutlineInputBorder(),
+                  ),
+                  textAlign: TextAlign.right,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: allergiesController,
+                  decoration: const InputDecoration(
+                    labelText: 'الحساسيات',
+                    border: OutlineInputBorder(),
+                  ),
+                  textAlign: TextAlign.right,
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (nameController.text.isNotEmpty &&
+                    idController.text.isNotEmpty) {
+                  final newPatient = {
+                    'name': nameController.text,
+                    'patient_id': idController
+                        .text, // Mapped to expected API param if any
+                    'age': int.tryParse(ageController.text) ?? 0,
+                    'gender': genderController.text,
+                    'blood_type': bloodTypeController.text,
+                    'allergies': allergiesController.text,
+                  };
+
+                  final result = await DataService.savePatient(newPatient);
+
+                  Navigator.of(context).pop();
+
+                  if (mounted) {
+                    if (result['success']) {
+                      await _loadPatients();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('تم إضافة المريض بنجاح')),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            result['message'] ?? 'فشل إضافة المريض',
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                }
+              },
+              child: const Text('إضافة'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.add, color: AppColors.primary, size: 30),
+          onPressed: _showAddPatientDialog,
+        ),
+        title: const Text(
+          'ملفات المرضى',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: _filterPatients,
+                      decoration: const InputDecoration(
+                        hintText: 'ابحث عن مريض بالاسم أو الرقم التعريفي...',
+                        prefixIcon: Icon(Icons.search),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.all(16),
+                      ),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: _filteredPatients.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'لا توجد مرضى',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 16,
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: _filteredPatients.length,
+                          itemBuilder: (context, index) {
+                            final patient = _filteredPatients[index];
+                            // Ensure API field mapping matches expectations
+                            final name = patient['name'] ?? 'Unknown';
+                            final id =
+                                patient['id']?.toString() ??
+                                patient['patient_id']?.toString() ??
+                                '#';
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _buildPatientItem(
+                                context,
+                                name: name,
+                                id: id,
+                                patient: patient,
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildPatientItem(
+    BuildContext context, {
+    required String name,
+    required String id,
+    required Map<String, dynamic> patient,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4),
+        ],
+      ),
+      child: ListTile(
+        leading: const Icon(
+          Icons.arrow_back_ios,
+          size: 16,
+          color: AppColors.textSecondary,
+        ),
+        trailing: CircleAvatar(
+          radius: 25,
+          backgroundColor: Colors.grey.shade200,
+          child: const Icon(Icons.person, color: Colors.grey),
+        ),
+        title: Text(
+          name,
+          textAlign: TextAlign.right,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          'الرقم التعريفي: $id',
+          textAlign: TextAlign.right,
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+        ),
+        onTap: () {
+          Navigator.pushNamed(context, '/patient-file', arguments: patient);
+        },
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+}
