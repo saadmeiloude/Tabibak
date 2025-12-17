@@ -21,6 +21,7 @@ import 'screens/doctor/appointment_management_screen.dart';
 import 'screens/doctor/patient_file_screen.dart';
 import 'screens/doctor/doctor_chat_screen.dart';
 import 'screens/doctor/patient_list_screen.dart';
+import 'screens/doctor/doctor_register_screen.dart';
 import 'screens/doctors_screen.dart';
 import 'screens/appointments_screen.dart';
 import 'screens/profile_screen.dart';
@@ -111,6 +112,7 @@ class MyApp extends StatelessWidget {
             '/notifications': (context) => const NotificationsScreen(),
             '/cards': (context) => const CardsScreen(),
             '/orders': (context) => const OrdersScreen(),
+            '/doctor-register': (context) => const DoctorRegisterScreen(),
           },
         );
       },

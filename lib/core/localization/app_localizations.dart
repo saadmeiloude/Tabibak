@@ -276,6 +276,12 @@ class AppLocalizations {
   String get continueGoogle => translate('continue_google');
   String get continueFacebook => translate('continue_facebook');
   String get watchVideo => translate('watch_video');
+
+  // Doctor Registration
+  String get joinAsDoctor => translate('join_as_doctor');
+  String get doctorRegisterSuccess => translate('doctor_register_success');
+  String get licenseNumberLabel => translate('license_number_label');
+  String get specializationLabel => translate('specialization_label');
 }
 
 class _AppLocalizationsDelegate

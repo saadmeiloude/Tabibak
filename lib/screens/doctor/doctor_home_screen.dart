@@ -30,54 +30,62 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
     });
 
     try {
-      await DataService.init();
       final user = await AuthService.getCurrentUser();
+      if (user == null) return;
 
-      final appointmentsResult = await DataService.getUserAppointments();
-      List<Appointment> appointments = [];
-      if (appointmentsResult['success']) {
-        appointments = appointmentsResult['appointments'] as List<Appointment>;
-      }
+      final statsResult = await DataService.getDoctorDashboardStats();
 
       setState(() {
-        _doctorName = user?.fullName ?? 'د. أحمد';
-        _todayAppointments = appointments.where((a) {
-          final now = DateTime.now();
-          return a.appointmentDate.year == now.year &&
-              a.appointmentDate.month == now.month &&
-              a.appointmentDate.day == now.day;
-        }).length;
+        _doctorName = user.fullName;
 
-        // Mock new patients mostly or assume from appointments
-        _newPatients = 0;
+        if (statsResult['success'] == true) {
+          final data = statsResult['data'];
+          _todayAppointments =
+              int.tryParse(data['today_appointments'].toString()) ?? 0;
+          _newPatients = int.tryParse(data['new_patients'].toString()) ?? 0;
 
-        // Upcoming
-        final now = DateTime.now();
-        _upcomingAppointments = appointments
-            .where(
-              (a) =>
-                  a.appointmentDate.isAfter(now) ||
-                  a.appointmentDate.isAtSameMomentAs(now),
-            )
-            .take(5)
-            .toList();
+          // Map upcoming appointments
+          _upcomingAppointments = (data['upcoming_appointments'] as List).map((
+            item,
+          ) {
+            return Appointment(
+              id: int.parse(item['id'].toString()),
+              doctorName: _doctorName, // Current doctor
+              patientName: item['patient_name'],
+              doctorSpecialty: '', // Not needed for doctor view
+              appointmentDate: DateTime.parse(item['appointment_date']),
+              appointmentTime: TimeOfDay(
+                hour: int.parse(item['appointment_time'].split(':')[0]),
+                minute: int.parse(item['appointment_time'].split(':')[1]),
+              ),
+              status: item['status'],
+              consultationType: item['consultation_type'] ?? 'General',
+              doctorId: user.id,
+            );
+          }).toList();
 
-        // Recent Patients (Mock for now as we don't have separate patient list API integrated here)
-        _recentPatients = [];
+          // Map recent patients
+          _recentPatients = (data['recent_patients'] as List)
+              .map(
+                (item) => {
+                  'name': item['name'],
+                  'lastVisit': item['last_visit'] ?? 'N/A',
+                  'isNew': false, // Logic handled in query if needed
+                },
+              )
+              .toList()
+              .cast<Map<String, dynamic>>();
+        }
 
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('خطأ في تحميل البيانات: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 

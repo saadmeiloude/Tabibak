@@ -182,6 +182,51 @@ class AuthService {
     }
   }
 
+  // Register doctor
+  static Future<Map<String, dynamic>> registerDoctor({
+    required String fullName,
+    required String email,
+    required String password,
+    required String phone,
+    required String licenseNumber,
+    required String specialization,
+    String? dateOfBirth,
+    String? gender,
+    String? address,
+  }) async {
+    try {
+      final response = await ApiService.request(
+        endpoint: 'api/auth/register_doctor.php',
+        method: 'POST',
+        data: {
+          'full_name': fullName,
+          'email': email,
+          'password': password,
+          'phone': phone,
+          'license_number': licenseNumber,
+          'specialization': specialization,
+          'date_of_birth': dateOfBirth,
+          'gender': gender,
+          'address': address,
+        },
+      );
+
+      final result = ApiService.handleResponse(response);
+
+      if (result['success']) {
+        final user = User.fromJson(result['data']['user']);
+        return {'success': true, 'user': user, 'message': result['message']};
+      } else {
+        return {
+          'success': false,
+          'message': result['error'] ?? 'Registration failed',
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
   // Logout user
   static Future<Map<String, dynamic>> logout() async {
     try {

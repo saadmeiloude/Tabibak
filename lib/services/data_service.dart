@@ -310,6 +310,58 @@ class DataService {
     // API-based service, no local initialization needed
   }
 
+  // Get doctor dashboard stats
+  static Future<Map<String, dynamic>> getDoctorDashboardStats() async {
+    try {
+      final response = await ApiService.request(
+        endpoint: 'api/doctor/dashboard_stats.php',
+        method:
+            'POST', // Using POST to easily send token in body if needed, though headers handle it
+        data: {}, // Token handled by ApiService automatically
+        requiresAuth: true,
+      );
+
+      final result = ApiService.handleResponse(response);
+      return result;
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+      return result;
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  // Get doctor profile
+  static Future<Map<String, dynamic>> getDoctorProfile() async {
+    try {
+      final response = await ApiService.request(
+        endpoint: 'api/doctor/profile.php',
+        method: 'GET',
+        requiresAuth: true,
+      );
+      return ApiService.handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  // Update doctor profile
+  static Future<Map<String, dynamic>> updateDoctorProfile(
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final response = await ApiService.request(
+        endpoint: 'api/doctor/profile.php',
+        method: 'POST',
+        data: data,
+        requiresAuth: true,
+      );
+      return ApiService.handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
   // Appointment Services
   static Future<Map<String, dynamic>> createAppointment({
     required int doctorId,

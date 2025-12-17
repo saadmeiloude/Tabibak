@@ -3,7 +3,7 @@ import '../../core/constants/colors.dart';
 import 'doctor_home_screen.dart';
 import 'appointment_management_screen.dart';
 import 'patient_list_screen.dart';
-// import 'patient_file_screen.dart'; // Will be pushed on stack usually, or part of a list
+import 'doctor_settings_screen.dart'; // Import Settings Screen
 
 class DoctorLayout extends StatefulWidget {
   const DoctorLayout({super.key});
@@ -19,7 +19,7 @@ class _DoctorLayoutState extends State<DoctorLayout> {
     const DoctorHomeScreen(),
     const AppointmentManagementScreen(), // Calendar/Appointments
     const PatientListScreen(), // Patients List
-    const Center(child: Text('الملف الشخصي')), // Placeholder
+    const DoctorSettingsScreen(), // Profile/Settings
   ];
 
   @override

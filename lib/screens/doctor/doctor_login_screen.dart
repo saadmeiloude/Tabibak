@@ -3,6 +3,9 @@ import '../../core/constants/colors.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 
+import '../../services/auth_service.dart';
+import '../../core/localization/app_localizations.dart';
+
 class DoctorLoginScreen extends StatefulWidget {
   const DoctorLoginScreen({super.key});
 
@@ -16,6 +19,7 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _rememberMe = false;
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -135,13 +139,68 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                   const SizedBox(height: 24),
 
                   CustomButton(
-                    text: 'تسجيل الدخول',
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        // Here you would typically authenticate with your backend
-                        Navigator.pushReplacementNamed(context, '/doctor-home');
-                      }
-                    },
+                    text: _isLoading
+                        ? (AppLocalizations.of(context)?.loading ??
+                              'جاري التحميل...')
+                        : (AppLocalizations.of(context)?.login ??
+                              'تسجيل الدخول'),
+                    onPressed: _isLoading
+                        ? null
+                        : () async {
+                            if (_formKey.currentState!.validate()) {
+                              setState(() => _isLoading = true);
+                              try {
+                                final result = await AuthService.login(
+                                  _emailController.text.trim(),
+                                  _passwordController.text,
+                                );
+
+                                if (mounted) {
+                                  setState(() => _isLoading = false);
+                                  if (result['success']) {
+                                    // Check if user is actually a doctor
+                                    final user =
+                                        result['user']; // access user object from result
+                                    if (user.userType == 'doctor') {
+                                      Navigator.pushReplacementNamed(
+                                        context,
+                                        '/doctor-home',
+                                      );
+                                    } else {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'هذا الحساب ليس حساب طبيب',
+                                          ),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                      AuthService.logout(); // Logout if not a doctor
+                                    }
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(result['message']),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  setState(() => _isLoading = false);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Error: $e'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              }
+                            }
+                          },
                   ),
 
                   const SizedBox(height: 24),
@@ -152,7 +211,7 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                       TextButton(
                         onPressed: () {
                           // Navigate to doctor registration screen
-                          Navigator.pushNamed(context, '/register');
+                          Navigator.pushNamed(context, '/doctor-register');
                         },
                         child: const Text('سجل الآن'),
                       ),

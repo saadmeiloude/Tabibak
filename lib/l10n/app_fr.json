@@ -205,5 +205,9 @@
     "explore_app": "Explorer l'application",
     "continue_google": "Continuer avec Google",
     "continue_facebook": "Continuer avec Facebook",
-    "watch_video": "Voir comment ça marche"
+    "watch_video": "Voir comment ça marche",
+    "join_as_doctor": "Rejoindre en tant que médecin",
+    "doctor_register_success": "Compte médecin créé avec succès",
+    "license_number_label": "Numéro de licence médicale",
+    "specialization_label": "Spécialisation (ex: Généraliste)"
 }

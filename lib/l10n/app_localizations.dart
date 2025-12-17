@@ -1327,6 +1327,30 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'شاهد فيديو سريع عن كيفية الحجز'**
   String get watch_video;
+
+  /// No description provided for @join_as_doctor.
+  ///
+  /// In ar, this message translates to:
+  /// **'انضم كطبيب'**
+  String get join_as_doctor;
+
+  /// No description provided for @doctor_register_success.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إنشاء حساب الطبيب بنجاح'**
+  String get doctor_register_success;
+
+  /// No description provided for @license_number_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'رقم الترخيص الطبي'**
+  String get license_number_label;
+
+  /// No description provided for @specialization_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'التخصص (مثال: طب عام)'**
+  String get specialization_label;
 }
 
 class _AppLocalizationsDelegate

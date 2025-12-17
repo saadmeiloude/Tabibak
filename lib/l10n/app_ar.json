@@ -205,5 +205,9 @@
     "explore_app": "استكشاف التطبيق",
     "continue_google": "الاستمرار باستخدام Google",
     "continue_facebook": "الاستمرار باستخدام Facebook",
-    "watch_video": "شاهد فيديو سريع عن كيفية الحجز"
+    "watch_video": "شاهد فيديو سريع عن كيفية الحجز",
+    "join_as_doctor": "انضم كطبيب",
+    "doctor_register_success": "تم إنشاء حساب الطبيب بنجاح",
+    "license_number_label": "رقم الترخيص الطبي",
+    "specialization_label": "التخصص (مثال: طب عام)"
 }
