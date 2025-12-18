@@ -668,9 +668,33 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
         minute,
       );
 
-      final int doctorId = widget.doctor?['id'] is int
-          ? widget.doctor!['id']
-          : int.tryParse(widget.doctor?['id'].toString() ?? '1') ?? 1;
+      // Validate doctor ID
+      final doctorIdRaw = widget.doctor?['id'];
+      if (doctorIdRaw == null) {
+        Navigator.pop(context); // Close progress dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('يرجى اختيار طبيب قبل الحجز'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final int doctorId = doctorIdRaw is int
+          ? doctorIdRaw
+          : int.tryParse(doctorIdRaw.toString()) ?? 0;
+
+      if (doctorId == 0) {
+        Navigator.pop(context); // Close progress dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('خطأ في معرف الطبيب'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
 
       // Call API to create appointment
       final result = await DataService.createAppointment(

@@ -48,8 +48,19 @@ try {
     $insertQuery = "INSERT INTO appointments (patient_id, doctor_id, appointment_date, appointment_time, symptoms, consultation_type, duration_minutes) 
                     VALUES (:patient_id, :doctor_id, :date, :time, :symptoms, :type, :duration)";
                     
+    // Determine patient_id
+    $patientId = $user['id'];
+    if ($user['user_type'] === 'doctor') {
+        if (!isset($input['patient_id'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Patient ID is required for doctor bookings']);
+            exit;
+        }
+        $patientId = $input['patient_id'];
+    }
+
     $stmt = $conn->prepare($insertQuery);
-    $stmt->bindParam(':patient_id', $user['id']);
+    $stmt->bindParam(':patient_id', $patientId);
     $stmt->bindParam(':doctor_id', $input['doctor_id']);
     $stmt->bindParam(':date', $input['appointment_date']);
     $stmt->bindParam(':time', $input['appointment_time']);

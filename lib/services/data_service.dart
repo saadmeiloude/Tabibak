@@ -171,6 +171,7 @@ class MedicalRecord {
 class Doctor {
   final int id;
   final int userId;
+  final String? name; // Doctor's full name from users table
   final String licenseNumber;
   final String specialization;
   final int experienceYears;
@@ -187,6 +188,7 @@ class Doctor {
   Doctor({
     required this.id,
     required this.userId,
+    this.name,
     required this.licenseNumber,
     required this.specialization,
     required this.experienceYears,
@@ -205,6 +207,7 @@ class Doctor {
     return Doctor(
       id: json['id'],
       userId: json['user_id'],
+      name: json['name'],
       licenseNumber: json['license_number'],
       specialization: json['specialization'],
       experienceYears: json['experience_years'] ?? 0,
@@ -214,7 +217,7 @@ class Doctor {
       availabilitySchedule: json['availability_schedule'],
       rating: _parseDouble(json['rating']),
       totalReviews: json['total_reviews'] ?? 0,
-      isAvailable: json['is_available'] ?? true,
+      isAvailable: json['is_available'] == 1 || json['is_available'] == true,
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
     );
@@ -224,6 +227,7 @@ class Doctor {
     return {
       'id': id,
       'user_id': userId,
+      'name': name,
       'license_number': licenseNumber,
       'specialization': specialization,
       'experience_years': experienceYears,
@@ -325,9 +329,6 @@ class DataService {
       return result;
     } catch (e) {
       return {'success': false, 'message': e.toString()};
-      return result;
-    } catch (e) {
-      return {'success': false, 'message': e.toString()};
     }
   }
 
@@ -367,23 +368,30 @@ class DataService {
     required int doctorId,
     required DateTime appointmentDate,
     required DateTime appointmentTime,
+    int? patientId, // Added optional patientId
     String? symptoms,
     String consultationType = 'online',
     int durationMinutes = 30,
   }) async {
     try {
+      final Map<String, dynamic> reqData = {
+        'doctor_id': doctorId,
+        'appointment_date': appointmentDate.toIso8601String().split('T')[0],
+        'appointment_time':
+            '${appointmentTime.hour.toString().padLeft(2, '0')}:${appointmentTime.minute.toString().padLeft(2, '0')}:00',
+        'symptoms': symptoms,
+        'consultation_type': consultationType,
+        'duration_minutes': durationMinutes,
+      };
+
+      if (patientId != null) {
+        reqData['patient_id'] = patientId;
+      }
+
       final response = await ApiService.request(
         endpoint: 'api/appointments/create.php',
         method: 'POST',
-        data: {
-          'doctor_id': doctorId,
-          'appointment_date': appointmentDate.toIso8601String().split('T')[0],
-          'appointment_time':
-              '${appointmentTime.hour.toString().padLeft(2, '0')}:${appointmentTime.minute.toString().padLeft(2, '0')}:00',
-          'symptoms': symptoms,
-          'consultation_type': consultationType,
-          'duration_minutes': durationMinutes,
-        },
+        data: reqData,
         requiresAuth: true,
       );
 
@@ -652,6 +660,19 @@ class DataService {
     }
   }
 
+  static Future<Map<String, dynamic>> getPatientDetails(int id) async {
+    try {
+      final response = await ApiService.request(
+        endpoint: 'api/patients/details.php?id=$id',
+        method: 'GET',
+        requiresAuth: true,
+      );
+      return ApiService.handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
   static Future<Map<String, dynamic>> savePatient(
     Map<String, dynamic> patientData,
   ) async {
@@ -663,6 +684,19 @@ class DataService {
         requiresAuth: true,
       );
 
+      return ApiService.handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getReportStats() async {
+    try {
+      final response = await ApiService.request(
+        endpoint: 'api/reports/daily.php',
+        method: 'GET',
+        requiresAuth: true,
+      );
       return ApiService.handleResponse(response);
     } catch (e) {
       return {'success': false, 'message': e.toString()};

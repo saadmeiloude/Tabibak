@@ -46,10 +46,10 @@ class _PatientListScreenState extends State<PatientListScreen> {
     }
 
     final filtered = _patients.where((patient) {
-      final name = patient['name']?.toString().toLowerCase() ?? '';
-      final id = patient['id']?.toString().toLowerCase() ?? '';
+      final name = patient['full_name']?.toString().toLowerCase() ?? '';
+      final phone = patient['phone']?.toString().toLowerCase() ?? '';
       return name.contains(query.toLowerCase()) ||
-          id.contains(query.toLowerCase());
+          phone.contains(query.toLowerCase());
     }).toList();
 
     setState(() {
@@ -143,14 +143,19 @@ class _PatientListScreenState extends State<PatientListScreen> {
               onPressed: () async {
                 if (nameController.text.isNotEmpty &&
                     idController.text.isNotEmpty) {
+                  // Using 'phone' as the ID for now as per backend requirement (or add separate ID field if DB supports it)
+                  // The backend expects 'full_name' and 'phone'.
+                  // We map user inputs to these fields.
                   final newPatient = {
-                    'name': nameController.text,
-                    'patient_id': idController
-                        .text, // Mapped to expected API param if any
-                    'age': int.tryParse(ageController.text) ?? 0,
-                    'gender': genderController.text,
-                    'blood_type': bloodTypeController.text,
-                    'allergies': allergiesController.text,
+                    'full_name': nameController.text,
+                    'phone': idController
+                        .text, // Using ID field input for Phone as it is unique
+                    'date_of_birth': ageController.text.isNotEmpty
+                        ? '${DateTime.now().year - int.parse(ageController.text)}-01-01'
+                        : null,
+                    // 'gender': genderController.text, // Backend needs to support this in create.php if not already
+                    // 'blood_type': bloodTypeController.text,
+                    // 'allergies': allergiesController.text,
                   };
 
                   final result = await DataService.savePatient(newPatient);
@@ -158,17 +163,24 @@ class _PatientListScreenState extends State<PatientListScreen> {
                   Navigator.of(context).pop();
 
                   if (mounted) {
-                    if (result['success']) {
+                    if (result['success'] == true) {
+                      // Check for boolean true
                       await _loadPatients();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('تم إضافة المريض بنجاح')),
+                        const SnackBar(
+                          content: Text('تم إضافة المريض بنجاح'),
+                          backgroundColor: Colors.green,
+                        ),
                       );
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            result['message'] ?? 'فشل إضافة المريض',
+                            result['message'] ??
+                                result['error'] ??
+                                'فشل إضافة المريض',
                           ),
+                          backgroundColor: Colors.red,
                         ),
                       );
                     }
@@ -241,10 +253,13 @@ class _PatientListScreenState extends State<PatientListScreen> {
                           itemBuilder: (context, index) {
                             final patient = _filteredPatients[index];
                             // Ensure API field mapping matches expectations
-                            final name = patient['name'] ?? 'Unknown';
+                            final name =
+                                patient['full_name'] ??
+                                patient['name'] ??
+                                'Unknown';
                             final id =
+                                patient['phone']?.toString() ??
                                 patient['id']?.toString() ??
-                                patient['patient_id']?.toString() ??
                                 '#';
 
                             return Padding(

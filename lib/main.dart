@@ -83,7 +83,12 @@ class MyApp extends StatelessWidget {
                       as Map<String, dynamic>?;
               return ConsultationScreen(doctor: args);
             },
-            '/booking-calendar': (context) => const BookingCalendarScreen(),
+            '/booking-calendar': (context) {
+              final args =
+                  ModalRoute.of(context)!.settings.arguments
+                      as Map<String, dynamic>?;
+              return BookingCalendarScreen(doctor: args);
+            },
             '/doctor-profile': (context) {
               final args =
                   ModalRoute.of(context)!.settings.arguments

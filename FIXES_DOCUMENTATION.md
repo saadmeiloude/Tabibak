@@ -84,3 +84,72 @@ $fetchQuery = "SELECT a.*,
 ✅ التطبيق يعمل على Chrome
 ✅ قاعدة البيانات متصلة ومهيأة
 ✅ جميع الإصلاحات تم تطبيقها بنجاح
+
+---
+
+## إصلاح مشكلة عدم ظهور المواعيد (2025-12-18)
+
+### المشكلة:
+عند حجز موعد جديد، لم يكن يظهر في قاعدة البيانات ولا في لوحة تحكم الطبيب.
+
+### الأسباب الجذرية:
+
+1. **شاشة الأطباء (`doctors_screen.dart`)** كانت تستخدم قائمة ثابتة من الأطباء **بدون `id`**
+2. **الروتينج في `main.dart`** لم يكن يمرر بيانات الطبيب إلى شاشة الحجز
+3. **شاشة الحجز** كانت تستخدم `doctor_id = 1` كقيمة افتراضية (Admin وليس طبيب!)
+
+### الملفات المعدلة:
+
+1. ✅ `lib/services/data_service.dart` - إضافة حقل `name` لنموذج Doctor
+2. ✅ `lib/screens/doctors_screen.dart` - جلب الأطباء من API بدلاً من البيانات الثابتة
+3. ✅ `lib/main.dart` - تمرير بيانات الطبيب لشاشة الحجز
+4. ✅ `lib/screens/booking_calendar_screen.dart` - التحقق من صحة `doctor_id` قبل الحجز
+
+### التفاصيل التقنية:
+
+#### تعديل نموذج Doctor:
+```dart
+class Doctor {
+  final int id;
+  final int userId;
+  final String? name; // إضافة اسم الطبيب
+  // ...
+}
+```
+
+#### جلب الأطباء من API:
+```dart
+Future<void> _loadDoctors() async {
+  final result = await DataService.getDoctors();
+  if (result['success']) {
+    final List<Doctor> doctorsList = result['doctors'];
+    _doctors = doctorsList.map((doc) => {
+      'id': doc.userId, // استخدام user_id كـ doctor_id
+      'name': doc.name ?? 'د. طبيب',
+      // ...
+    }).toList();
+  }
+}
+```
+
+#### تمرير بيانات الطبيب في main.dart:
+```dart
+'/booking-calendar': (context) {
+  final args = ModalRoute.of(context)!.settings.arguments
+      as Map<String, dynamic>?;
+  return BookingCalendarScreen(doctor: args);
+},
+```
+
+#### التحقق من doctor_id في booking_calendar_screen.dart:
+```dart
+final doctorIdRaw = widget.doctor?['id'];
+if (doctorIdRaw == null) {
+  // عرض رسالة خطأ: يرجى اختيار طبيب قبل الحجز
+  return;
+}
+```
+
+### ملاحظة مهمة:
+- في جدول `appointments`، يشير `doctor_id` إلى `users.id` وليس `doctors.id`
+- يجب استخدام `doc.userId` عند تمرير ID الطبيب لإنشاء موعد

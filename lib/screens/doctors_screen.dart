@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
 import '../core/localization/app_localizations.dart';
+import '../services/data_service.dart';
 
 class DoctorsScreen extends StatefulWidget {
   const DoctorsScreen({super.key});
@@ -13,81 +14,73 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   String _selectedFilter = 'الكل';
   String _searchQuery = '';
   bool _isListView = true;
+  bool _isLoading = true;
+  String? _errorMessage;
 
   final TextEditingController _searchController = TextEditingController();
 
-  final List<Map<String, dynamic>> _doctors = [
-    {
-      'name': 'dr_ahmed_elmi',
-      'specialty': 'طبيب قلب',
-      'distance': '2',
-      'rating': 4.8,
-      'reviews': 120,
-      'price': 250,
-      'image': 'assets/images/doctor1.png',
-      'available': true,
-    },
-    {
-      'name': 'dr_sara_ahmed',
-      'specialty': 'طبيبة عامة',
-      'distance': '1.5',
-      'rating': 4.9,
-      'reviews': 85,
-      'price': 180,
-      'image': 'assets/images/doctor2.png',
-      'available': true,
-    },
-    {
-      'name': 'dr_khaled_omar',
-      'specialty': 'جلدية',
-      'distance': '3',
-      'rating': 4.7,
-      'reviews': 95,
-      'price': 220,
-      'image': 'assets/images/doctor3.png',
-      'available': false,
-    },
-    {
-      'name': 'dr_fatima_zahra',
-      'specialty': 'أطفال',
-      'distance': '0.8',
-      'rating': 4.9,
-      'reviews': 150,
-      'price': 200,
-      'image': 'assets/images/doctor4.png',
-      'available': true,
-    },
-    {
-      'name': 'dr_mohamed_otaibi',
-      'specialty': 'عظام',
-      'distance': '2.5',
-      'rating': 4.6,
-      'reviews': 78,
-      'price': 280,
-      'image': 'assets/images/doctor5.png',
-      'available': true,
-    },
-    {
-      'name': 'dr_nora_saad',
-      'specialty': 'أنف وأذن وحنجرة',
-      'distance': '1.2',
-      'rating': 4.8,
-      'reviews': 110,
-      'price': 240,
-      'image': 'assets/images/doctor6.png',
-      'available': false,
-    },
-  ];
+  // Doctors loaded from API
+  List<Map<String, dynamic>> _doctors = [];
 
   final List<String> _specialties = [
     'الكل',
-    'طبيب قلب',
-    'طبيبة عامة',
+    'طب عام',
+    'أمراض القلب',
     'جلدية',
     'أطفال',
     'عظام',
     'أنف وأذن وحنجرة',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDoctors();
+  }
+
+  Future<void> _loadDoctors() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await DataService.getDoctors();
+
+      if (result['success']) {
+        final List<Doctor> doctorsList = result['doctors'];
+        setState(() {
+          _doctors = doctorsList
+              .map(
+                (doc) => {
+                  'id': doc
+                      .userId, // Use user_id as the doctor_id for appointments
+                  'name': doc.name ?? 'د. طبيب',
+                  'specialty': doc.specialization,
+                  'distance': '2',
+                  'rating': doc.rating,
+                  'reviews': doc.totalReviews,
+                  'price': doc.consultationFee.toInt(),
+                  'image': 'assets/images/doctor1.png',
+                  'available': doc.isAvailable,
+                },
+              )
+              .toList();
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = result['message'] ?? 'فشل تحميل الأطباء';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'خطأ في الاتصال: $e';
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -118,24 +111,9 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     return filtered;
   }
 
-  String _getLocalizedName(BuildContext context, String key) {
-    var loc = AppLocalizations.of(context);
-    switch (key) {
-      case 'dr_ahmed_elmi':
-        return loc?.drAhmedElmi ?? 'د. أحمد علمي';
-      case 'dr_sara_ahmed':
-        return loc?.drSaraAhmed ?? 'د. سارة أحمد';
-      case 'dr_khaled_omar':
-        return loc?.drKhaledOmar ?? 'د. خالد عمر';
-      case 'dr_fatima_zahra':
-        return loc?.drFatimaZahra ?? 'د. فاطمة الزهراء';
-      case 'dr_mohamed_otaibi':
-        return loc?.drMohamedOtaibi ?? 'د. محمد العتيبي';
-      case 'dr_nora_saad':
-        return loc?.drNoraSaad ?? 'د. نورا السعد';
-      default:
-        return key;
-    }
+  String _getLocalizedName(BuildContext context, String name) {
+    // For API-loaded doctors, just return the name directly
+    return name;
   }
 
   @override
@@ -168,199 +146,223 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Search Bar
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
-                decoration: InputDecoration(
-                  hintText:
-                      loc?.searchPlaceholder ?? 'ابحث عن الأطباء أو التخصصات',
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: AppColors.textSecondary,
-                  ),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {
-                              _searchQuery = '';
-                            });
-                          },
-                          icon: const Icon(Icons.clear),
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: Colors.transparent,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Filters
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: _specialties.map((specialty) {
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: _buildFilterChip(specialty),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Results count
-            Text(
-              '${_filteredDoctors.length} ${loc?.doctorsAvailable ?? "طبيب متاح"}',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // View Toggle
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _isListView = true;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: _isListView
-                              ? AppColors.white
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: _isListView
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
-                                    blurRadius: 4,
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Center(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.view_list,
-                                color: _isListView
-                                    ? AppColors.primary
-                                    : AppColors.textSecondary,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                loc?.listView ?? 'قائمة',
-                                style: TextStyle(
-                                  color: _isListView
-                                      ? AppColors.primary
-                                      : AppColors.textSecondary,
-                                  fontWeight: _isListView
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: Colors.red),
                   ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _isListView = false;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: !_isListView
-                              ? AppColors.white
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: !_isListView
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
-                                    blurRadius: 4,
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Center(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.map,
-                                color: !_isListView
-                                    ? AppColors.primary
-                                    : AppColors.textSecondary,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                loc?.mapView ?? 'خريطة',
-                                style: TextStyle(
-                                  color: !_isListView
-                                      ? AppColors.primary
-                                      : AppColors.textSecondary,
-                                  fontWeight: !_isListView
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _loadDoctors,
+                    child: const Text('إعادة المحاولة'),
                   ),
                 ],
               ),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Search Bar
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText:
+                            loc?.searchPlaceholder ??
+                            'ابحث عن الأطباء أو التخصصات',
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: AppColors.textSecondary,
+                        ),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _searchQuery = '';
+                                  });
+                                },
+                                icon: const Icon(Icons.clear),
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: Colors.transparent,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Filters
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: _specialties.map((specialty) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: _buildFilterChip(specialty),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Results count
+                  Text(
+                    '${_filteredDoctors.length} ${loc?.doctorsAvailable ?? "طبيب متاح"}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // View Toggle
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _isListView = true;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: _isListView
+                                    ? AppColors.white
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: _isListView
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.05),
+                                          blurRadius: 4,
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Center(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.view_list,
+                                      color: _isListView
+                                          ? AppColors.primary
+                                          : AppColors.textSecondary,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      loc?.listView ?? 'قائمة',
+                                      style: TextStyle(
+                                        color: _isListView
+                                            ? AppColors.primary
+                                            : AppColors.textSecondary,
+                                        fontWeight: _isListView
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _isListView = false;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: !_isListView
+                                    ? AppColors.white
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: !_isListView
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.05),
+                                          blurRadius: 4,
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Center(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.map,
+                                      color: !_isListView
+                                          ? AppColors.primary
+                                          : AppColors.textSecondary,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      loc?.mapView ?? 'خريطة',
+                                      style: TextStyle(
+                                        color: !_isListView
+                                            ? AppColors.primary
+                                            : AppColors.textSecondary,
+                                        fontWeight: !_isListView
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Doctors List
+                  if (_isListView) _buildDoctorsList() else _buildMapView(),
+
+                  const SizedBox(
+                    height: 100,
+                  ), // Bottom padding for floating buttons
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-
-            // Doctors List
-            if (_isListView) _buildDoctorsList() else _buildMapView(),
-
-            const SizedBox(height: 100), // Bottom padding for floating buttons
-          ],
-        ),
-      ),
       floatingActionButton: _searchQuery.isNotEmpty || _selectedFilter != 'الكل'
           ? FloatingActionButton(
               onPressed: () {

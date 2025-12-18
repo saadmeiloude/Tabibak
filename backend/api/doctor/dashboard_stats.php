@@ -70,7 +70,7 @@ try {
     $newPatientsCount = $newPatientsStmt->fetch(PDO::FETCH_ASSOC)['count'];
     
     // 3. Get Upcoming Appointments (Limit 5)
-    $upcomingQuery = "SELECT a.id, a.appointment_date, a.appointment_time, a.consultation_type, a.status,
+    $upcomingQuery = "SELECT a.id, a.patient_id, a.appointment_date, a.appointment_time, a.consultation_type, a.status,
                              u.full_name as patient_name, u.profile_image as patient_image
                       FROM appointments a
                       JOIN users u ON a.patient_id = u.id
@@ -107,13 +107,31 @@ try {
     $recentPatientsStmt->execute();
     $recentPatients = $recentPatientsStmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // 5. Get Total Patients Count (All patients in system)
+    $totalPatientsQuery = "SELECT COUNT(*) as count FROM users WHERE user_type = 'patient'";
+    $totalPatientsStmt = $conn->prepare($totalPatientsQuery);
+    $totalPatientsStmt->execute();
+    $totalPatientsCount = $totalPatientsStmt->fetch(PDO::FETCH_ASSOC)['count'];
+
+    // 6. Get Recently Added Patients (Last 7 days)
+    $recentlyAddedQuery = "SELECT id, full_name as name, phone, profile_image, created_at
+                           FROM users 
+                           WHERE user_type = 'patient'
+                           ORDER BY created_at DESC
+                           LIMIT 5";
+    $recentlyAddedStmt = $conn->prepare($recentlyAddedQuery);
+    $recentlyAddedStmt->execute();
+    $recentlyAddedPatients = $recentlyAddedStmt->fetchAll(PDO::FETCH_ASSOC);
+
     echo json_encode([
         'success' => true,
         'data' => [
             'today_appointments' => $todayCount,
             'new_patients' => $newPatientsCount,
+            'total_patients' => $totalPatientsCount,
             'upcoming_appointments' => $upcomingAppointments,
-            'recent_patients' => $recentPatients
+            'recent_patients' => $recentPatients,
+            'recently_added_patients' => $recentlyAddedPatients
         ]
     ]);
 

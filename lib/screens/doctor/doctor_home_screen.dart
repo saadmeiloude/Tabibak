@@ -14,8 +14,10 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
   bool _isLoading = true;
   int _todayAppointments = 0;
   int _newPatients = 0;
+  int _totalPatients = 0;
   List<Appointment> _upcomingAppointments = [];
   List<Map<String, dynamic>> _recentPatients = [];
+  List<Map<String, dynamic>> _recentlyAddedPatients = [];
   String _doctorName = 'د. أحمد';
 
   @override
@@ -43,26 +45,46 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
           _todayAppointments =
               int.tryParse(data['today_appointments'].toString()) ?? 0;
           _newPatients = int.tryParse(data['new_patients'].toString()) ?? 0;
+          _totalPatients = int.tryParse(data['total_patients'].toString()) ?? 0;
+
+          // Map recently added patients
+          _recentlyAddedPatients =
+              (data['recently_added_patients'] as List? ?? [])
+                  .map(
+                    (item) => {
+                      'id': item['id'],
+                      'name': item['name'],
+                      'phone': item['phone'],
+                      'created_at': item['created_at'],
+                    },
+                  )
+                  .toList()
+                  .cast<Map<String, dynamic>>();
 
           // Map upcoming appointments
-          _upcomingAppointments = (data['upcoming_appointments'] as List).map((
-            item,
-          ) {
-            return Appointment(
-              id: int.parse(item['id'].toString()),
-              doctorName: _doctorName, // Current doctor
-              patientName: item['patient_name'],
-              doctorSpecialty: '', // Not needed for doctor view
-              appointmentDate: DateTime.parse(item['appointment_date']),
-              appointmentTime: TimeOfDay(
-                hour: int.parse(item['appointment_time'].split(':')[0]),
-                minute: int.parse(item['appointment_time'].split(':')[1]),
-              ),
-              status: item['status'],
-              consultationType: item['consultation_type'] ?? 'General',
-              doctorId: user.id,
-            );
-          }).toList();
+          _upcomingAppointments = (data['upcoming_appointments'] as List)
+              .map((item) {
+                return Appointment(
+                  id: int.parse(item['id'].toString()),
+                  patientId: int.parse(item['patient_id'].toString()),
+                  doctorId: user.id,
+                  doctorName: _doctorName,
+                  patientName: item['patient_name'],
+                  appointmentDate: DateTime.parse(item['appointment_date']),
+                  appointmentTime: DateTime.parse(
+                    '1970-01-01 ${item['appointment_time']}',
+                  ),
+                  status: item['status'],
+                  consultationType: item['consultation_type'] ?? 'General',
+                  durationMinutes: 30, // Default
+                  feePaid: 0.0, // Default
+                  paymentStatus: 'pending', // Default
+                  createdAt: DateTime.now(), // Default
+                  updatedAt: DateTime.now(), // Default
+                );
+              })
+              .cast<Appointment>()
+              .toList();
 
           // Map recent patients
           _recentPatients = (data['recent_patients'] as List)
@@ -122,28 +144,76 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
     );
   }
 
-  void _showReportsDialog() {
-    // ... (Keep existing implementation)
+  Future<void> _showReportsDialog() async {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('التقارير'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.analytics),
-              title: Text('تقرير المواعيد اليومية'),
+      barrierDismissible: false,
+      builder: (context) => FutureBuilder<Map<String, dynamic>>(
+        future: DataService.getReportStats(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const AlertDialog(
+              content: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          final data = snapshot.data?['data'] ?? {};
+          final todayStats = data['today_stats'] ?? {};
+          final revenue = data['revenue_today'] ?? 0;
+
+          return AlertDialog(
+            title: const Text('تقارير اليوم', textAlign: TextAlign.center),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.show_chart, color: Colors.blue),
+                  title: const Text('إجمالي الدخل اليوم'),
+                  trailing: Text(
+                    '$revenue د.ج',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.people, color: Colors.green),
+                  title: const Text('إجمالي المرضى'),
+                  trailing: Text(
+                    '${data['total_patients'] ?? 0}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const Divider(),
+                const Text(
+                  'حالة المواعيد',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                ...todayStats.entries
+                    .map<Widget>(
+                      (e) => ListTile(
+                        dense: true,
+                        title: Text(e.key.toString().toUpperCase()),
+                        trailing: Text(e.value.toString()),
+                      ),
+                    )
+                    .toList(),
+                if (todayStats.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Text(
+                      'لا توجد مواعيد اليوم',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+              ],
             ),
-            // ...
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إغلاق'),
-          ),
-        ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('إغلاق'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -218,7 +288,103 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                // Total Patients Row
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatCard(
+                        context,
+                        title: 'إجمالي المرضى',
+                        value: _totalPatients.toString(),
+                        icon: Icons.people,
+                        color: Colors.purple,
+                        onTap: () =>
+                            Navigator.pushNamed(context, '/patient-list'),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 24),
+
+                // Recently Added Patients
+                if (_recentlyAddedPatients.isNotEmpty) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'المرضى المضافون حديثاً',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      TextButton(
+                        onPressed: () =>
+                            Navigator.pushNamed(context, '/patient-list'),
+                        child: const Text('عرض الكل'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 100,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _recentlyAddedPatients.length,
+                      itemBuilder: (context, index) {
+                        final patient = _recentlyAddedPatients[index];
+                        return Container(
+                          width: 150,
+                          margin: const EdgeInsets.only(right: 12),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.green.shade200),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: Colors.green.shade100,
+                                    child: const Icon(
+                                      Icons.person_add,
+                                      size: 16,
+                                      color: Colors.green,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      patient['name'] ?? 'Unknown',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                patient['phone'] ?? '',
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
 
                 // Quick Actions
                 Text(

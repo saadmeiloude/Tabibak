@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
 import '../../services/data_service.dart';
+import '../../services/auth_service.dart';
 
 class AppointmentManagementScreen extends StatefulWidget {
   const AppointmentManagementScreen({super.key});
@@ -13,99 +14,227 @@ class AppointmentManagementScreen extends StatefulWidget {
 class _AppointmentManagementScreenState
     extends State<AppointmentManagementScreen> {
   List<Appointment> _appointments = [];
+  List<dynamic> _patients = [];
   String _selectedFilter = 'اليوم';
   bool _isListView = true;
   bool _isLoading = true;
+  int? _currentDoctorId;
 
   @override
   void initState() {
     super.initState();
-    _loadAppointments();
+    _initData();
+  }
+
+  Future<void> _initData() async {
+    setState(() => _isLoading = true);
+    await DataService.init();
+
+    // Get Current User (Doctor)
+    final user = await AuthService.getCurrentUser();
+    if (user != null) {
+      _currentDoctorId = user.id;
+    }
+
+    // Load Data
+    await Future.wait([_loadAppointments(), _loadPatients()]);
+
+    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> _loadAppointments() async {
-    setState(() => _isLoading = true);
-    await DataService.init();
     final result = await DataService.getUserAppointments();
+    if (mounted && result['success']) {
+      _appointments = result['appointments'] as List<Appointment>;
+    }
+  }
 
-    if (mounted) {
-      setState(() {
-        if (result['success']) {
-          _appointments = result['appointments'] as List<Appointment>;
-        }
-        _isLoading = false;
-      });
+  Future<void> _loadPatients() async {
+    final result = await DataService.getPatients();
+    if (mounted && result['success']) {
+      _patients = result['patients'] as List<dynamic>;
     }
   }
 
   Future<void> _showAddAppointmentDialog() async {
-    // Note: Creating appointment usually requires selecting a patient and doctor.
-    // This dialog is simplified and might need further implementation for full support.
+    if (_patients.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('لا يوجد مرضى مسجلين. الرجاء إضافة مريض أولاً.'),
+        ),
+      );
+      return;
+    }
 
-    final nameController = TextEditingController();
-    final descriptionController = TextEditingController(); // acts as symptoms
-    // Time picker would be better
+    final formKey = GlobalKey<FormState>();
+    int? selectedPatientId;
+    final descriptionController = TextEditingController();
+    DateTime selectedDate = DateTime.now();
+    TimeOfDay selectedTime = TimeOfDay.now();
 
-    return showDialog<void>(
+    await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('إنشاء موعد جديد (تجريبي)'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'ملاحظة: هذا يتطلب تحديد مريض مسجل',
-                style: TextStyle(color: Colors.red, fontSize: 12),
-              ),
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'اسم المريض',
-                  border: OutlineInputBorder(),
-                ),
-                textAlign: TextAlign.right,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'السبب/النوع',
-                  border: OutlineInputBorder(),
-                ),
-                textAlign: TextAlign.right,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('إلغاء'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                // Stub for now as we lack API to create appointment by just name
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('الإنشاء غير مدعوم حالياً في هذه الواجهة'),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('إنشاء موعد جديد'),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      DropdownButtonFormField<int>(
+                        decoration: const InputDecoration(
+                          labelText: 'اختر المريض',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: _patients
+                            .map(
+                              (p) => DropdownMenuItem<int>(
+                                value: int.tryParse(p['id'].toString()),
+                                child: Text(p['full_name'] ?? 'Unknown'),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) => selectedPatientId = val,
+                        validator: (val) => val == null ? 'مطلوب' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: descriptionController,
+                        decoration: const InputDecoration(
+                          labelText: 'السبب / الأعراض',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ListTile(
+                        title: Text(
+                          'التاريخ: ${selectedDate.toString().split(' ')[0]}',
+                        ),
+                        trailing: const Icon(Icons.calendar_today),
+                        onTap: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: selectedDate,
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 365),
+                            ),
+                          );
+                          if (date != null) setState(() => selectedDate = date);
+                        },
+                      ),
+                      ListTile(
+                        title: Text('الوقت: ${selectedTime.format(context)}'),
+                        trailing: const Icon(Icons.access_time),
+                        onTap: () async {
+                          final time = await showTimePicker(
+                            context: context,
+                            initialTime: selectedTime,
+                          );
+                          if (time != null) setState(() => selectedTime = time);
+                        },
+                      ),
+                    ],
                   ),
-                );
-              },
-              child: const Text('إنشاء'),
-            ),
-          ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('إلغاء'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (formKey.currentState!.validate() &&
+                        _currentDoctorId != null) {
+                      Navigator.pop(context);
+                      _createAppointment(
+                        doctorId: _currentDoctorId!,
+                        patientId: selectedPatientId!,
+                        date: selectedDate,
+                        time: selectedTime,
+                        symptoms: descriptionController.text,
+                      );
+                    }
+                  },
+                  child: const Text('إنشاء'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
-  Future<void> _confirmAppointment(Appointment appointment) async {
-    // API might not have confirm endpoint, simulated or mock
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('خاصية التأكيد غير متوفرة في API حالياً')),
+  Future<void> _createAppointment({
+    required int doctorId,
+    required int patientId,
+    required DateTime date,
+    required TimeOfDay time,
+    String? symptoms,
+  }) async {
+    setState(() => _isLoading = true);
+
+    // Combine date and time
+    final dateTime = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
     );
+
+    final result = await DataService.createAppointment(
+      doctorId: doctorId,
+      patientId: patientId,
+      appointmentDate: date,
+      appointmentTime: dateTime,
+      symptoms: symptoms,
+    );
+
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      if (result['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم حجز الموعد بنجاح'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        await _loadAppointments();
+        setState(() {}); // Force UI refresh
+      } else {
+        final errorMsg = result['message'] ?? result['error'] ?? 'فشل الحجز';
+        debugPrint('Appointment creation failed: $errorMsg');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMsg),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmAppointment(Appointment appointment) async {
+    // API might not have confirm endpoint, simulated or update status
+    final result = await DataService.updateAppointment(
+      appointmentId: appointment.id,
+      status: 'confirmed',
+    );
+    if (result['success']) {
+      _loadAppointments();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم تأكيد الموعد')));
+    }
   }
 
   Future<void> _cancelAppointment(Appointment appointment) async {
@@ -127,16 +256,26 @@ class _AppointmentManagementScreenState
   }
 
   Future<void> _rescheduleAppointment(Appointment appointment) async {
-    // Placeholder for reschedule
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('خاصية إعادة الجدولة غير متوفرة بعد')),
+      const SnackBar(content: Text('خاصية إعادة الجدولة قيد التطوير')),
     );
   }
 
   List<Appointment> _getFilteredAppointments() {
-    // Simple filter logic
     return _appointments.where((appointment) {
-      if (appointment.status == 'cancelled') return false; // Hide cancelled?
+      if (_selectedFilter == 'اليوم') {
+        final now = DateTime.now();
+        return appointment.appointmentDate.year == now.year &&
+            appointment.appointmentDate.month == now.month &&
+            appointment.appointmentDate.day == now.day;
+      }
+      // Add 'Tomorrow' etc.
+      if (_selectedFilter == 'غداً') {
+        final tomorrow = DateTime.now().add(const Duration(days: 1));
+        return appointment.appointmentDate.year == tomorrow.year &&
+            appointment.appointmentDate.month == tomorrow.month &&
+            appointment.appointmentDate.day == tomorrow.day;
+      }
       return true;
     }).toList();
   }
@@ -150,8 +289,9 @@ class _AppointmentManagementScreenState
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(onPressed: () {}, icon: const Icon(Icons.sort)),
-        actions: [IconButton(onPressed: () {}, icon: const Icon(Icons.menu))],
+        actions: [
+          IconButton(onPressed: _initData, icon: const Icon(Icons.refresh)),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -225,12 +365,11 @@ class _AppointmentManagementScreenState
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
+                      _buildFilterChip('الكل', _selectedFilter == 'الكل'),
+                      const SizedBox(width: 8),
                       _buildFilterChip('اليوم', _selectedFilter == 'اليوم'),
                       const SizedBox(width: 8),
                       _buildFilterChip('غداً', _selectedFilter == 'غداً'),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('السبت', _selectedFilter == 'السبت'),
-                      // Add more logic to actually filter by date if needed
                     ],
                   ),
                 ),
