@@ -590,6 +590,7 @@ class DataService {
     required int doctorId,
     required String recordType,
     required String title,
+    int? patientId,
     String? description,
     String? diagnosis,
     String? treatment,
@@ -597,20 +598,26 @@ class DataService {
     int? appointmentId,
   }) async {
     try {
+      final Map<String, dynamic> reqData = {
+        'doctor_id': doctorId,
+        'record_type': recordType,
+        'title': title,
+        'description': description,
+        'diagnosis': diagnosis,
+        'treatment': treatment,
+        'medications': medications,
+        'appointment_id': appointmentId,
+        'record_date': DateTime.now().toIso8601String().split('T')[0],
+      };
+
+      if (patientId != null) {
+        reqData['patient_id'] = patientId;
+      }
+
       final response = await ApiService.request(
         endpoint: 'api/medical-records/create.php',
         method: 'POST',
-        data: {
-          'doctor_id': doctorId,
-          'record_type': recordType,
-          'title': title,
-          'description': description,
-          'diagnosis': diagnosis,
-          'treatment': treatment,
-          'medications': medications,
-          'appointment_id': appointmentId,
-          'record_date': DateTime.now().toIso8601String().split('T')[0],
-        },
+        data: reqData,
         requiresAuth: true,
       );
 
