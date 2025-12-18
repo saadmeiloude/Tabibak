@@ -11,7 +11,7 @@
 
 **الحل**:
 ```php
-// قبل الإصلاح:
+
 $whereClause = "(patient_id = :user_id OR doctor_id = :user_id)";
 $stmt->bindParam(':user_id', $user['id']);
 

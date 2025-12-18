@@ -23,6 +23,8 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
   final _confirmPasswordController = TextEditingController();
   final _licenseController = TextEditingController();
   final _specializationController = TextEditingController();
+  final _experienceController = TextEditingController();
+  final _feeController = TextEditingController();
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -37,6 +39,8 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
     _confirmPasswordController.dispose();
     _licenseController.dispose();
     _specializationController.dispose();
+    _experienceController.dispose();
+    _feeController.dispose();
     super.dispose();
   }
 
@@ -53,6 +57,8 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
         phone: _phoneController.text.trim(),
         licenseNumber: _licenseController.text.trim(),
         specialization: _specializationController.text.trim(),
+        consultationFee: double.tryParse(_feeController.text.trim()) ?? 0.0,
+        experienceYears: int.tryParse(_experienceController.text.trim()) ?? 0,
       );
 
       if (mounted) {
@@ -163,6 +169,31 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
                   controller: _specializationController,
                   prefixIcon: Icons.work,
                   validator: (v) => v!.isEmpty ? 'التخصص مطلوب' : null,
+                ),
+                const SizedBox(height: 16),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: CustomTextField(
+                        hintText: 'سنوات الخبرة',
+                        controller: _experienceController,
+                        prefixIcon: Icons.history_edu,
+                        keyboardType: TextInputType.number,
+                        validator: (v) => v!.isEmpty ? 'مطلوب' : null,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: CustomTextField(
+                        hintText: ' سعر الكشف (أوقية)',
+                        controller: _feeController,
+                        prefixIcon: Icons.attach_money,
+                        keyboardType: TextInputType.number,
+                        validator: (v) => v!.isEmpty ? 'مطلوب' : null,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
 

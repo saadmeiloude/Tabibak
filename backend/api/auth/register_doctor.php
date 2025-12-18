@@ -97,14 +97,22 @@ try {
     
     $userId = $conn->lastInsertId();
 
+$consultationFee = isset($input['consultation_fee']) ? floatval($input['consultation_fee']) : 0.0;
+$experienceYears = isset($input['experience_years']) ? intval($input['experience_years']) : 0;
+
+// Update required fields validation if strictly needed, but let's keep them optional or check them if preferred.
+// For now, accepting 0 as default is fine, but better to request them if meaningful.
+
     // Insert doctor details
-    $insertDoctor = "INSERT INTO doctors (user_id, license_number, specialization, is_available) 
-                     VALUES (:user_id, :license_number, :specialization, 1)";
+    $insertDoctor = "INSERT INTO doctors (user_id, license_number, specialization, experience_years, consultation_fee, is_available) 
+                     VALUES (:user_id, :license_number, :specialization, :experience_years, :consultation_fee, 1)";
     
     $stmtDoctor = $conn->prepare($insertDoctor);
     $stmtDoctor->bindParam(':user_id', $userId);
     $stmtDoctor->bindParam(':license_number', $licenseNumber);
     $stmtDoctor->bindParam(':specialization', $specialization);
+    $stmtDoctor->bindParam(':experience_years', $experienceYears);
+    $stmtDoctor->bindParam(':consultation_fee', $consultationFee);
 
     if (!$stmtDoctor->execute()) {
         throw new Exception("Failed to create doctor profile");
