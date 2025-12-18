@@ -22,9 +22,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _emailNotifications = true;
   bool _smsNotifications = false;
   String? _profileImagePath;
-  String _userName = 'أحمد محمد';
-  String _userEmail = 'ahmed.mohamed@email.com';
-  String _userPhone = '+966 50 123 4567';
+  String _userName = '';
+  String _userEmail = '';
+  String _userPhone = '';
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();

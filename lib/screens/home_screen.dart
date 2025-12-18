@@ -12,7 +12,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String _userName = 'Saad Meiloud';
+  String _userName = '';
   List<Appointment> _upcomingAppointments = [];
   List<Map<String, dynamic>> _recentNotifications = [];
   bool _isLoading = true;
@@ -32,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (mounted) {
       setState(() {
-        _userName = user?.fullName ?? 'أحمد محمد';
+        _userName = user?.fullName ?? '';
         if (appointmentsResult['success']) {
           _upcomingAppointments =
               (appointmentsResult['appointments'] as List<Appointment>)
@@ -40,13 +40,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   .toList();
         }
 
-        _userName = user?.fullName ?? 'أحمد محمد';
-        if (appointmentsResult['success']) {
-          _upcomingAppointments =
-              (appointmentsResult['appointments'] as List<Appointment>)
-                  .take(2)
-                  .toList();
-        }
         _isLoading = false;
       });
     }
@@ -59,7 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return [
       {
         'title': loc?.confirmAppointment ?? 'تأكيد الموعد',
-        'message': loc?.notifConfirmSara ?? 'تم تأكيد موعدك مع د. سارة',
+        'message': loc?.notifConfirmSara ?? 'تم تأكيد موعدك بنجاح',
         'time': loc?.time1HourAgo ?? 'منذ ساعة',
         'type': 'appointment',
       },
@@ -235,7 +228,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     children: [
                                       Text(
                                         _upcomingAppointments[0].doctorName ??
-                                            'د. أحمد علي',
+                                            '',
                                         style: const TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
@@ -318,9 +311,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               context,
                               '/consultation',
                               arguments: {
-                                'name': 'د. سارة أحمد',
-                                'specialty': 'طبيبة عامة',
-                                'rating': 4.8,
+                                'name': '',
+                                'specialty': '',
+                                'rating': 5.0,
                               },
                             );
                           },

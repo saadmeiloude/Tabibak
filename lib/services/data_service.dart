@@ -52,14 +52,14 @@ class Appointment {
 
   factory Appointment.fromJson(Map<String, dynamic> json) {
     return Appointment(
-      id: json['id'],
-      patientId: json['patient_id'],
-      doctorId: json['doctor_id'],
+      id: int.parse(json['id'].toString()),
+      patientId: int.parse(json['patient_id'].toString()),
+      doctorId: int.parse(json['doctor_id'].toString()),
       doctorName: json['doctor_name'],
       patientName: json['patient_name'],
       appointmentDate: DateTime.parse(json['appointment_date']),
       appointmentTime: DateTime.parse('1970-01-01 ${json['appointment_time']}'),
-      durationMinutes: json['duration_minutes'] ?? 30,
+      durationMinutes: int.parse((json['duration_minutes'] ?? 30).toString()),
       status: json['status'],
       consultationType: json['consultation_type'] ?? 'online',
       symptoms: json['symptoms'],
@@ -131,10 +131,12 @@ class MedicalRecord {
 
   factory MedicalRecord.fromJson(Map<String, dynamic> json) {
     return MedicalRecord(
-      id: json['id'],
-      patientId: json['patient_id'],
-      doctorId: json['doctor_id'],
-      appointmentId: json['appointment_id'],
+      id: int.parse(json['id'].toString()),
+      patientId: int.parse(json['patient_id'].toString()),
+      doctorId: int.parse(json['doctor_id'].toString()),
+      appointmentId: json['appointment_id'] != null
+          ? int.parse(json['appointment_id'].toString())
+          : null,
       recordType: json['record_type'],
       title: json['title'],
       description: json['description'],
@@ -205,19 +207,22 @@ class Doctor {
 
   factory Doctor.fromJson(Map<String, dynamic> json) {
     return Doctor(
-      id: json['id'],
-      userId: json['user_id'],
+      id: int.parse(json['id'].toString()),
+      userId: int.parse(json['user_id'].toString()),
       name: json['name'],
       licenseNumber: json['license_number'],
       specialization: json['specialization'],
-      experienceYears: json['experience_years'] ?? 0,
+      experienceYears: int.parse((json['experience_years'] ?? 0).toString()),
       education: json['education'],
       certifications: json['certifications'],
       consultationFee: _parseDouble(json['consultation_fee']),
       availabilitySchedule: json['availability_schedule'],
       rating: _parseDouble(json['rating']),
-      totalReviews: json['total_reviews'] ?? 0,
-      isAvailable: json['is_available'] == 1 || json['is_available'] == true,
+      totalReviews: int.parse((json['total_reviews'] ?? 0).toString()),
+      isAvailable:
+          json['is_available'] == 1 ||
+          json['is_available'] == '1' ||
+          json['is_available'] == true,
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
     );
@@ -275,15 +280,18 @@ class Research {
 
   factory Research.fromJson(Map<String, dynamic> json) {
     return Research(
-      id: json['id'],
-      doctorId: json['doctor_id'],
+      id: int.parse(json['id'].toString()),
+      doctorId: int.parse(json['doctor_id'].toString()),
       title: json['title'],
       summary: json['summary'],
       content: json['content'],
       attachmentUrl: json['attachment_url'],
       category: json['category'],
       tags: json['tags'],
-      isPublished: json['is_published'] == 1 || json['is_published'] == true,
+      isPublished:
+          json['is_published'] == 1 ||
+          json['is_published'] == '1' ||
+          json['is_published'] == true,
       doctorName: json['doctor_name'],
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),

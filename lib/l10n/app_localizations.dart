@@ -1151,49 +1151,49 @@ abstract class AppLocalizations {
   /// No description provided for @dr_ahmed_elmi.
   ///
   /// In ar, this message translates to:
-  /// **'د. أحمد علمي'**
+  /// **'طبيب متخصص'**
   String get dr_ahmed_elmi;
 
   /// No description provided for @dr_sara_ahmed.
   ///
   /// In ar, this message translates to:
-  /// **'د. سارة أحمد'**
+  /// **'طبيبة متخصصة'**
   String get dr_sara_ahmed;
 
   /// No description provided for @dr_khaled_omar.
   ///
   /// In ar, this message translates to:
-  /// **'د. خالد عمر'**
+  /// **'طبيب متخصص'**
   String get dr_khaled_omar;
 
   /// No description provided for @dr_fatima_zahra.
   ///
   /// In ar, this message translates to:
-  /// **'د. فاطمة الزهراء'**
+  /// **'طبيبة متخصصة'**
   String get dr_fatima_zahra;
 
   /// No description provided for @dr_mohamed_otaibi.
   ///
   /// In ar, this message translates to:
-  /// **'د. محمد العتيبي'**
+  /// **'طبيب متخصص'**
   String get dr_mohamed_otaibi;
 
   /// No description provided for @dr_nora_saad.
   ///
   /// In ar, this message translates to:
-  /// **'د. نورا السعد'**
+  /// **'طبيبة متخصصة'**
   String get dr_nora_saad;
 
   /// No description provided for @notif_confirm_sara.
   ///
   /// In ar, this message translates to:
-  /// **'تم تأكيد موعدك مع د. سارة غداً في الساعة 2:00 م'**
+  /// **'تم تأكيد موعدك بنجاح'**
   String get notif_confirm_sara;
 
   /// No description provided for @notif_reminder_ahmed.
   ///
   /// In ar, this message translates to:
-  /// **'موعدك اليوم في الساعة 10:30 ص مع د. أحمد'**
+  /// **'موعدك اليوم في الساعة 10:30 ص'**
   String get notif_reminder_ahmed;
 
   /// No description provided for @notif_offer_20.
@@ -1205,7 +1205,7 @@ abstract class AppLocalizations {
   /// No description provided for @notif_rate_ahmed.
   ///
   /// In ar, this message translates to:
-  /// **'كيف كانت تجربتك مع د. أحمد؟ قم بتقييم الخدمة'**
+  /// **'كيف كانت تجربتك؟ قم بتقييم الخدمة'**
   String get notif_rate_ahmed;
 
   /// No description provided for @notif_security_login.
