@@ -5,6 +5,8 @@ import '../../widgets/custom_text_field.dart';
 import '../../services/data_service.dart';
 import '../../services/auth_service.dart';
 import '../../core/localization/app_localizations.dart';
+import 'package:provider/provider.dart';
+import '../../services/language_service.dart';
 
 class DoctorSettingsScreen extends StatefulWidget {
   const DoctorSettingsScreen({super.key});
@@ -131,6 +133,26 @@ class _DoctorSettingsScreenState extends State<DoctorSettingsScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
+          // Language Switcher
+          Consumer<LanguageService>(
+            builder: (context, languageService, child) {
+              return PopupMenuButton<Locale>(
+                icon: const Icon(Icons.language, color: AppColors.primary),
+                onSelected: (Locale locale) {
+                  languageService.changeLanguage(locale);
+                },
+                itemBuilder: (BuildContext context) =>
+                    LanguageService.supportedLocales.map((Locale locale) {
+                      return PopupMenuItem<Locale>(
+                        value: locale,
+                        child: Text(
+                          locale.languageCode == 'ar' ? 'العربية' : 'Français',
+                        ),
+                      );
+                    }).toList(),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.red),
             onPressed: () => _showLogoutDialog(context),
@@ -175,7 +197,10 @@ class _DoctorSettingsScreenState extends State<DoctorSettingsScreen> {
             ),
             const SizedBox(height: 24),
 
-            _buildSectionHeader(context, 'المعلومات الشخصية'),
+            _buildSectionHeader(
+              context,
+              loc?.personalInfo ?? 'المعلومات الشخصية',
+            ),
             CustomTextField(
               hintText: loc?.fullName ?? 'الاسم',
               controller: _fullNameController,
@@ -189,15 +214,18 @@ class _DoctorSettingsScreenState extends State<DoctorSettingsScreen> {
             ),
             const SizedBox(height: 12),
             CustomTextField(
-              hintText: 'العنوان',
+              hintText: loc?.address ?? 'العنوان',
               controller: _addressController,
               prefixIcon: Icons.location_on,
             ),
 
             const SizedBox(height: 24),
-            _buildSectionHeader(context, 'المعلومات المهنية'),
+            _buildSectionHeader(
+              context,
+              loc?.professionalInfo ?? 'المعلومات المهنية',
+            ),
             CustomTextField(
-              hintText: 'التخصص',
+              hintText: loc?.specialty ?? 'التخصص',
               controller: _specializationController,
               prefixIcon: Icons.work,
             ),
@@ -215,7 +243,7 @@ class _DoctorSettingsScreenState extends State<DoctorSettingsScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: CustomTextField(
-                    hintText: 'سعر الكشف',
+                    hintText: loc?.consultationFeeHint ?? 'سعر الكشف',
                     controller: _feesController,
                     prefixIcon: Icons.attach_money,
                     keyboardType: TextInputType.number,
@@ -226,14 +254,14 @@ class _DoctorSettingsScreenState extends State<DoctorSettingsScreen> {
 
             const SizedBox(height: 12),
             CustomTextField(
-              hintText: 'التعليم / المؤهلات',
+              hintText: loc?.educationQualifications ?? 'التعليم / المؤهلات',
               controller: _educationController,
               prefixIcon: Icons.school,
             ),
 
             const SizedBox(height: 12),
             CustomTextField(
-              hintText: 'الشهادات',
+              hintText: loc?.certificates ?? 'الشهادات',
               controller: _certificationsController,
               prefixIcon: Icons.card_membership,
             ),
@@ -242,7 +270,7 @@ class _DoctorSettingsScreenState extends State<DoctorSettingsScreen> {
             CustomButton(
               text: _isSaving
                   ? (loc?.loading ?? 'جاري الحفظ...')
-                  : (loc?.save ?? 'حفظ التغييرات'),
+                  : (loc?.saveChanges ?? 'حفظ التغييرات'),
               onPressed: _isSaving ? null : _saveProfile,
             ),
             const SizedBox(height: 48),

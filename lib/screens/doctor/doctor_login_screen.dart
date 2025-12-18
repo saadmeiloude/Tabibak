@@ -23,6 +23,7 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    var loc = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -49,7 +50,7 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'طبيبي',
+                    loc?.appName ?? 'طبيبي',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -58,7 +59,7 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
 
                   // Welcome Text
                   Text(
-                    'مرحباً بعودتك، دكتور',
+                    loc?.welcomeBackDoctor ?? 'مرحباً بعودتك، دكتور',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -69,18 +70,22 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: Text(
-                      'البريد الإلكتروني أو رقم الهاتف',
+                      loc?.emailOrPhoneLabel ??
+                          'البريد الإلكتروني أو رقم الهاتف',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
                   const SizedBox(height: 8),
                   CustomTextField(
-                    hintText: 'أدخل بريدك الإلكتروني أو رقم هاتفك',
+                    hintText:
+                        loc?.emailOrPhoneHint ??
+                        'أدخل بريدك الإلكتروني أو رقم هاتفك',
                     controller: _emailController,
                     prefixIcon: Icons.email_outlined,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'يرجى إدخال البريد الإلكتروني';
+                        return loc?.emailOrPhoneLabel ??
+                            'يرجى إدخال البريد الإلكتروني';
                       }
                       return null;
                     },
@@ -90,13 +95,13 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: Text(
-                      'كلمة المرور',
+                      loc?.password ?? 'كلمة المرور',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
                   const SizedBox(height: 8),
                   CustomTextField(
-                    hintText: 'أدخل كلمة المرور',
+                    hintText: loc?.enterPasswordHint ?? 'أدخل كلمة المرور',
                     controller: _passwordController,
                     obscureText: _obscurePassword,
                     prefixIcon: Icons.lock_outline,
@@ -110,7 +115,8 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                     },
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'يرجى إدخال كلمة المرور';
+                        return loc?.enterPasswordHint ??
+                            'يرجى إدخال كلمة المرور';
                       }
                       return null;
                     },
@@ -125,14 +131,14 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                             setState(() => _rememberMe = v ?? false),
                         activeColor: AppColors.primary,
                       ),
-                      const Text('تذكرني'),
+                      Text(loc?.rememberMe ?? 'تذكرني'),
                       const Spacer(),
                       TextButton(
                         onPressed: () {
                           // Navigate to forgot password screen
                           Navigator.pushNamed(context, '/forgot-password');
                         },
-                        child: const Text('نسيت كلمة المرور؟'),
+                        child: Text(loc?.forgotPassword ?? 'نسيت كلمة المرور؟'),
                       ),
                     ],
                   ),
@@ -140,10 +146,8 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
 
                   CustomButton(
                     text: _isLoading
-                        ? (AppLocalizations.of(context)?.loading ??
-                              'جاري التحميل...')
-                        : (AppLocalizations.of(context)?.login ??
-                              'تسجيل الدخول'),
+                        ? (loc?.loading ?? 'جاري التحميل...')
+                        : (loc?.login ?? 'تسجيل الدخول'),
                     onPressed: _isLoading
                         ? null
                         : () async {
@@ -170,9 +174,10 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
-                                        const SnackBar(
+                                        SnackBar(
                                           content: Text(
-                                            'هذا الحساب ليس حساب طبيب',
+                                            loc?.notDoctorAccountError ??
+                                                'هذا الحساب ليس حساب طبيب',
                                           ),
                                           backgroundColor: Colors.red,
                                         ),
@@ -207,13 +212,13 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('ليس لديك حساب؟'),
+                      Text(loc?.dontHaveAccount ?? 'ليس لديك حساب؟'),
                       TextButton(
                         onPressed: () {
                           // Navigate to doctor registration screen
                           Navigator.pushNamed(context, '/doctor-register');
                         },
-                        child: const Text('سجل الآن'),
+                        child: Text(loc?.registerNow ?? 'سجل الآن'),
                       ),
                     ],
                   ),

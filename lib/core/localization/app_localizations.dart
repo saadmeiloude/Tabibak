@@ -282,6 +282,72 @@ class AppLocalizations {
   String get doctorRegisterSuccess => translate('doctor_register_success');
   String get licenseNumberLabel => translate('license_number_label');
   String get specializationLabel => translate('specialization_label');
+  String get experienceYearsHint => translate('experience_years_hint');
+  String get consultationFeeHint => translate('consultation_fee_hint');
+  String get welcomeBackDoctor => translate('welcome_back_doctor');
+  String get emailOrPhoneLabel => translate('email_or_phone_label');
+  String get emailOrPhoneHint => translate('email_or_phone_hint');
+  String get enterPasswordHint => translate('enter_password_hint');
+  String get notDoctorAccountError => translate('not_doctor_account_error');
+  String get todayAppointments => translate('today_appointments');
+  String get newPatients => translate('new_patients');
+  String get totalPatients => translate('total_patients');
+  String get recentlyAddedPatients => translate('recently_added_patients');
+  String get newAppointmentAction => translate('new_appointment_action');
+  String get newPatientAction => translate('new_patient_action');
+  String get reportsAction => translate('reports_action');
+  String get patientsTitle => translate('patients_title');
+  String get noPatientsData => translate('no_patients_data');
+  String get viewFileAction => translate('view_file_action');
+  String get lastVisitLabel => translate('last_visit_label');
+  String get reportsDialogTitle => translate('reports_dialog_title');
+  String get totalIncomeToday => translate('total_income_today');
+  String get appointmentStatusTitle => translate('appointment_status_title');
+
+  String get noAppointmentsToday => translate('no_appointments_today');
+
+  // Doctor Profile New Keys
+  String get calendar => translate('calendar');
+  String get myProfile => translate('my_profile');
+  String get personalInfo => translate('personal_info');
+  String get address => translate('address');
+  String get professionalInfo => translate('professional_info');
+  String get educationQualifications => translate('education_qualifications');
+  String get certificates => translate('certificates');
+  String get saveChanges => translate('save_changes');
+
+  // Patient List Keys
+  String get patientFiles => translate('patient_files');
+  String get searchPatientHint => translate('search_patient_hint');
+  String get noPatientsFound => translate('no_patients_found');
+  String get addNewPatientTitle => translate('add_new_patient_title');
+  String get patientNameLabel => translate('patient_name_label');
+  String get patientIdLabel => translate('patient_id_label');
+  String get ageLabel => translate('age_label');
+  String get genderLabel => translate('gender_label');
+  String get bloodTypeLabel => translate('blood_type_label');
+  String get allergiesLabel => translate('allergies_label');
+  String get add => translate('add');
+  String get patientAddedSuccess => translate('patient_added_success');
+  String get patientAddedError => translate('patient_added_error');
+  String get patientIdDisplay => translate('patient_id_display');
+
+  // Appointment Management Keys
+  String get appointmentManagement => translate('appointment_management');
+  String get list => translate('list');
+  String get noAppointments => translate('no_appointments');
+  String get calendarViewUnderDev => translate('calendar_view_under_dev');
+  String get confirmAttendance => translate('confirm_attendance');
+  String get appointmentConfirmed => translate('appointment_confirmed');
+  String get appointmentCancelled => translate('appointment_cancelled');
+  String get createAppointmentTitle => translate('create_appointment_title');
+  String get selectPatientLabel => translate('select_patient_label');
+  String get symptomsLabel => translate('symptoms_label');
+  String get create => translate('create');
+  String get appointmentBookedSuccess =>
+      translate('appointment_booked_success');
+  String get bookingFailed => translate('booking_failed');
+  String get noCustomersWarning => translate('no_customers_warning');
 }
 
 class _AppLocalizationsDelegate

@@ -1351,6 +1351,354 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'التخصص (مثال: طب عام)'**
   String get specialization_label;
+
+  /// No description provided for @experience_years_hint.
+  ///
+  /// In ar, this message translates to:
+  /// **'سنوات الخبرة'**
+  String get experience_years_hint;
+
+  /// No description provided for @consultation_fee_hint.
+  ///
+  /// In ar, this message translates to:
+  /// **'سعر الكشف'**
+  String get consultation_fee_hint;
+
+  /// No description provided for @welcome_back_doctor.
+  ///
+  /// In ar, this message translates to:
+  /// **'مرحباً بعودتك، دكتور'**
+  String get welcome_back_doctor;
+
+  /// No description provided for @email_or_phone_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'البريد الإلكتروني أو رقم الهاتف'**
+  String get email_or_phone_label;
+
+  /// No description provided for @email_or_phone_hint.
+  ///
+  /// In ar, this message translates to:
+  /// **'أدخل بريدك الإلكتروني أو رقم هاتفك'**
+  String get email_or_phone_hint;
+
+  /// No description provided for @enter_password_hint.
+  ///
+  /// In ar, this message translates to:
+  /// **'أدخل كلمة المرور'**
+  String get enter_password_hint;
+
+  /// No description provided for @not_doctor_account_error.
+  ///
+  /// In ar, this message translates to:
+  /// **'هذا الحساب ليس حساب طبيب'**
+  String get not_doctor_account_error;
+
+  /// No description provided for @today_appointments.
+  ///
+  /// In ar, this message translates to:
+  /// **'مواعيد اليوم'**
+  String get today_appointments;
+
+  /// No description provided for @new_patients.
+  ///
+  /// In ar, this message translates to:
+  /// **'مرضى جدد'**
+  String get new_patients;
+
+  /// No description provided for @total_patients.
+  ///
+  /// In ar, this message translates to:
+  /// **'إجمالي المرضى'**
+  String get total_patients;
+
+  /// No description provided for @recently_added_patients.
+  ///
+  /// In ar, this message translates to:
+  /// **'المرضى المضافون حديثاً'**
+  String get recently_added_patients;
+
+  /// No description provided for @new_appointment_action.
+  ///
+  /// In ar, this message translates to:
+  /// **'موعد جديد'**
+  String get new_appointment_action;
+
+  /// No description provided for @new_patient_action.
+  ///
+  /// In ar, this message translates to:
+  /// **'مريض جديد'**
+  String get new_patient_action;
+
+  /// No description provided for @reports_action.
+  ///
+  /// In ar, this message translates to:
+  /// **'التقارير'**
+  String get reports_action;
+
+  /// No description provided for @patients_title.
+  ///
+  /// In ar, this message translates to:
+  /// **'المرضى'**
+  String get patients_title;
+
+  /// No description provided for @no_patients_data.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا توجد بيانات مرضى'**
+  String get no_patients_data;
+
+  /// No description provided for @view_file_action.
+  ///
+  /// In ar, this message translates to:
+  /// **'عرض الملف'**
+  String get view_file_action;
+
+  /// No description provided for @last_visit_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'آخر زيارة'**
+  String get last_visit_label;
+
+  /// No description provided for @reports_dialog_title.
+  ///
+  /// In ar, this message translates to:
+  /// **'تقارير اليوم'**
+  String get reports_dialog_title;
+
+  /// No description provided for @total_income_today.
+  ///
+  /// In ar, this message translates to:
+  /// **'إجمالي الدخل اليوم'**
+  String get total_income_today;
+
+  /// No description provided for @appointment_status_title.
+  ///
+  /// In ar, this message translates to:
+  /// **'حالة المواعيد'**
+  String get appointment_status_title;
+
+  /// No description provided for @no_appointments_today.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا توجد مواعيد اليوم'**
+  String get no_appointments_today;
+
+  /// No description provided for @calendar.
+  ///
+  /// In ar, this message translates to:
+  /// **'التقويم'**
+  String get calendar;
+
+  /// No description provided for @my_profile.
+  ///
+  /// In ar, this message translates to:
+  /// **'ملفي'**
+  String get my_profile;
+
+  /// No description provided for @personal_info.
+  ///
+  /// In ar, this message translates to:
+  /// **'المعلومات الشخصية'**
+  String get personal_info;
+
+  /// No description provided for @address.
+  ///
+  /// In ar, this message translates to:
+  /// **'العنوان'**
+  String get address;
+
+  /// No description provided for @professional_info.
+  ///
+  /// In ar, this message translates to:
+  /// **'المعلومات المهنية'**
+  String get professional_info;
+
+  /// No description provided for @education_qualifications.
+  ///
+  /// In ar, this message translates to:
+  /// **'التعليم / المؤهلات'**
+  String get education_qualifications;
+
+  /// No description provided for @certificates.
+  ///
+  /// In ar, this message translates to:
+  /// **'الشهادات'**
+  String get certificates;
+
+  /// No description provided for @save_changes.
+  ///
+  /// In ar, this message translates to:
+  /// **'حفظ التغييرات'**
+  String get save_changes;
+
+  /// No description provided for @patient_files.
+  ///
+  /// In ar, this message translates to:
+  /// **'ملفات المرضى'**
+  String get patient_files;
+
+  /// No description provided for @search_patient_hint.
+  ///
+  /// In ar, this message translates to:
+  /// **'ابحث عن مريض بالاسم أو الرقم التعريفي...'**
+  String get search_patient_hint;
+
+  /// No description provided for @no_patients_found.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا توجد مرضى'**
+  String get no_patients_found;
+
+  /// No description provided for @add_new_patient_title.
+  ///
+  /// In ar, this message translates to:
+  /// **'إضافة مريض جديد'**
+  String get add_new_patient_title;
+
+  /// No description provided for @patient_name_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'اسم المريض'**
+  String get patient_name_label;
+
+  /// No description provided for @patient_id_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'الرقم التعريفي'**
+  String get patient_id_label;
+
+  /// No description provided for @age_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'العمر'**
+  String get age_label;
+
+  /// No description provided for @gender_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'الجنس'**
+  String get gender_label;
+
+  /// No description provided for @blood_type_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'فصيلة الدم'**
+  String get blood_type_label;
+
+  /// No description provided for @allergies_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'الحساسيات'**
+  String get allergies_label;
+
+  /// No description provided for @add.
+  ///
+  /// In ar, this message translates to:
+  /// **'إضافة'**
+  String get add;
+
+  /// No description provided for @patient_added_success.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إضافة المريض بنجاح'**
+  String get patient_added_success;
+
+  /// No description provided for @patient_added_error.
+  ///
+  /// In ar, this message translates to:
+  /// **'فشل إضافة المريض'**
+  String get patient_added_error;
+
+  /// No description provided for @patient_id_display.
+  ///
+  /// In ar, this message translates to:
+  /// **'الرقم التعريفي: '**
+  String get patient_id_display;
+
+  /// No description provided for @appointment_management.
+  ///
+  /// In ar, this message translates to:
+  /// **'إدارة المواعيد'**
+  String get appointment_management;
+
+  /// No description provided for @list.
+  ///
+  /// In ar, this message translates to:
+  /// **'قائمة'**
+  String get list;
+
+  /// No description provided for @no_appointments.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا توجد مواعيد'**
+  String get no_appointments;
+
+  /// No description provided for @calendar_view_under_dev.
+  ///
+  /// In ar, this message translates to:
+  /// **'عرض التقويم قيد التطوير'**
+  String get calendar_view_under_dev;
+
+  /// No description provided for @confirm_attendance.
+  ///
+  /// In ar, this message translates to:
+  /// **'قبول'**
+  String get confirm_attendance;
+
+  /// No description provided for @appointment_confirmed.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم قبول الموعد'**
+  String get appointment_confirmed;
+
+  /// No description provided for @appointment_cancelled.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إلغاء الموعد'**
+  String get appointment_cancelled;
+
+  /// No description provided for @create_appointment_title.
+  ///
+  /// In ar, this message translates to:
+  /// **'إنشاء موعد جديد'**
+  String get create_appointment_title;
+
+  /// No description provided for @select_patient_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'اختر المريض'**
+  String get select_patient_label;
+
+  /// No description provided for @symptoms_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'السبب / الأعراض'**
+  String get symptoms_label;
+
+  /// No description provided for @create.
+  ///
+  /// In ar, this message translates to:
+  /// **'إنشاء'**
+  String get create;
+
+  /// No description provided for @appointment_booked_success.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم حجز الموعد بنجاح'**
+  String get appointment_booked_success;
+
+  /// No description provided for @booking_failed.
+  ///
+  /// In ar, this message translates to:
+  /// **'فشل الحجز'**
+  String get booking_failed;
+
+  /// No description provided for @no_customers_warning.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا يوجد مرضى مسجلين. الرجاء إضافة مريض أولاً.'**
+  String get no_customers_warning;
 }
 
 class _AppLocalizationsDelegate

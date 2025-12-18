@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
 import '../../services/data_service.dart';
+import '../../core/localization/app_localizations.dart';
 
 class PatientListScreen extends StatefulWidget {
   const PatientListScreen({super.key});
@@ -70,34 +71,42 @@ class _PatientListScreenState extends State<PatientListScreen> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('إضافة مريض جديد'),
+          title: Text(
+            AppLocalizations.of(context)?.addNewPatientTitle ??
+                'إضافة مريض جديد',
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'اسم المريض',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText:
+                        AppLocalizations.of(context)?.patientNameLabel ??
+                        'اسم المريض',
+                    border: const OutlineInputBorder(),
                   ),
                   textAlign: TextAlign.right,
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: idController,
-                  decoration: const InputDecoration(
-                    labelText: 'الرقم التعريفي',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText:
+                        AppLocalizations.of(context)?.patientIdLabel ??
+                        'الرقم التعريفي',
+                    border: const OutlineInputBorder(),
                   ),
                   textAlign: TextAlign.right,
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: ageController,
-                  decoration: const InputDecoration(
-                    labelText: 'العمر',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText:
+                        AppLocalizations.of(context)?.ageLabel ?? 'العمر',
+                    border: const OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.right,
@@ -105,27 +114,32 @@ class _PatientListScreenState extends State<PatientListScreen> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: genderController,
-                  decoration: const InputDecoration(
-                    labelText: 'الجنس',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText:
+                        AppLocalizations.of(context)?.genderLabel ?? 'الجنس',
+                    border: const OutlineInputBorder(),
                   ),
                   textAlign: TextAlign.right,
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: bloodTypeController,
-                  decoration: const InputDecoration(
-                    labelText: 'فصيلة الدم',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText:
+                        AppLocalizations.of(context)?.bloodTypeLabel ??
+                        'فصيلة الدم',
+                    border: const OutlineInputBorder(),
                   ),
                   textAlign: TextAlign.right,
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: allergiesController,
-                  decoration: const InputDecoration(
-                    labelText: 'الحساسيات',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText:
+                        AppLocalizations.of(context)?.allergiesLabel ??
+                        'الحساسيات',
+                    border: const OutlineInputBorder(),
                   ),
                   textAlign: TextAlign.right,
                 ),
@@ -137,7 +151,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: const Text('إلغاء'),
+              child: Text(AppLocalizations.of(context)?.cancel ?? 'إلغاء'),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -167,8 +181,11 @@ class _PatientListScreenState extends State<PatientListScreen> {
                       // Check for boolean true
                       await _loadPatients();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('تم إضافة المريض بنجاح'),
+                        SnackBar(
+                          content: Text(
+                            AppLocalizations.of(context)?.patientAddedSuccess ??
+                                'تم إضافة المريض بنجاح',
+                          ),
                           backgroundColor: Colors.green,
                         ),
                       );
@@ -178,6 +195,9 @@ class _PatientListScreenState extends State<PatientListScreen> {
                           content: Text(
                             result['message'] ??
                                 result['error'] ??
+                                AppLocalizations.of(
+                                  context,
+                                )?.patientAddedError ??
                                 'فشل إضافة المريض',
                           ),
                           backgroundColor: Colors.red,
@@ -187,7 +207,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
                   }
                 }
               },
-              child: const Text('إضافة'),
+              child: Text(AppLocalizations.of(context)?.add ?? 'إضافة'),
             ),
           ],
         );
@@ -204,9 +224,9 @@ class _PatientListScreenState extends State<PatientListScreen> {
           icon: const Icon(Icons.add, color: AppColors.primary, size: 30),
           onPressed: _showAddPatientDialog,
         ),
-        title: const Text(
-          'ملفات المرضى',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          AppLocalizations.of(context)?.patientFiles ?? 'ملفات المرضى',
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
@@ -226,11 +246,13 @@ class _PatientListScreenState extends State<PatientListScreen> {
                     child: TextField(
                       controller: _searchController,
                       onChanged: _filterPatients,
-                      decoration: const InputDecoration(
-                        hintText: 'ابحث عن مريض بالاسم أو الرقم التعريفي...',
-                        prefixIcon: Icon(Icons.search),
+                      decoration: InputDecoration(
+                        hintText:
+                            AppLocalizations.of(context)?.searchPatientHint ??
+                            'ابحث عن مريض بالاسم أو الرقم التعريفي...',
+                        prefixIcon: const Icon(Icons.search),
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.all(16),
+                        contentPadding: const EdgeInsets.all(16),
                       ),
                       textAlign: TextAlign.right,
                     ),
@@ -238,9 +260,10 @@ class _PatientListScreenState extends State<PatientListScreen> {
                 ),
                 Expanded(
                   child: _filteredPatients.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: Text(
-                            'لا توجد مرضى',
+                            AppLocalizations.of(context)?.noPatientsFound ??
+                                'لا توجد مرضى',
                             style: TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 16,
@@ -311,7 +334,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          'الرقم التعريفي: $id',
+          '${AppLocalizations.of(context)?.patientIdDisplay ?? 'الرقم التعريفي: '}$id',
           textAlign: TextAlign.right,
           style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
         ),

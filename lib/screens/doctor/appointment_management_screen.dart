@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
 import '../../services/data_service.dart';
 import '../../services/auth_service.dart';
+import '../../core/localization/app_localizations.dart';
 
 class AppointmentManagementScreen extends StatefulWidget {
   const AppointmentManagementScreen({super.key});
@@ -15,7 +16,7 @@ class _AppointmentManagementScreenState
     extends State<AppointmentManagementScreen> {
   List<Appointment> _appointments = [];
   List<dynamic> _patients = [];
-  String _selectedFilter = 'اليوم';
+  String _selectedFilter = 'today';
   bool _isListView = true;
   bool _isLoading = true;
   int? _currentDoctorId;
@@ -59,8 +60,11 @@ class _AppointmentManagementScreenState
   Future<void> _showAddAppointmentDialog() async {
     if (_patients.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('لا يوجد مرضى مسجلين. الرجاء إضافة مريض أولاً.'),
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)?.noCustomersWarning ??
+                'لا يوجد مرضى مسجلين. الرجاء إضافة مريض أولاً.',
+          ),
         ),
       );
       return;
@@ -79,7 +83,10 @@ class _AppointmentManagementScreenState
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: const Text('إنشاء موعد جديد'),
+              title: Text(
+                AppLocalizations.of(context)?.createAppointmentTitle ??
+                    'إنشاء موعد جديد',
+              ),
               content: Form(
                 key: formKey,
                 child: SingleChildScrollView(
@@ -87,9 +94,13 @@ class _AppointmentManagementScreenState
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       DropdownButtonFormField<int>(
-                        decoration: const InputDecoration(
-                          labelText: 'اختر المريض',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText:
+                              AppLocalizations.of(
+                                context,
+                              )?.selectPatientLabel ??
+                              'اختر المريض',
+                          border: const OutlineInputBorder(),
                         ),
                         items: _patients
                             .map(
@@ -105,15 +116,17 @@ class _AppointmentManagementScreenState
                       const SizedBox(height: 16),
                       TextField(
                         controller: descriptionController,
-                        decoration: const InputDecoration(
-                          labelText: 'السبب / الأعراض',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText:
+                              AppLocalizations.of(context)?.symptomsLabel ??
+                              'السبب / الأعراض',
+                          border: const OutlineInputBorder(),
                         ),
                       ),
                       const SizedBox(height: 16),
                       ListTile(
                         title: Text(
-                          'التاريخ: ${selectedDate.toString().split(' ')[0]}',
+                          '${AppLocalizations.of(context)?.date ?? 'التاريخ'}: ${selectedDate.toString().split(' ')[0]}',
                         ),
                         trailing: const Icon(Icons.calendar_today),
                         onTap: () async {
@@ -129,7 +142,9 @@ class _AppointmentManagementScreenState
                         },
                       ),
                       ListTile(
-                        title: Text('الوقت: ${selectedTime.format(context)}'),
+                        title: Text(
+                          '${AppLocalizations.of(context)?.time ?? 'الوقت'}: ${selectedTime.format(context)}',
+                        ),
                         trailing: const Icon(Icons.access_time),
                         onTap: () async {
                           final time = await showTimePicker(
@@ -146,7 +161,7 @@ class _AppointmentManagementScreenState
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('إلغاء'),
+                  child: Text(AppLocalizations.of(context)?.cancel ?? 'إلغاء'),
                 ),
                 ElevatedButton(
                   onPressed: () async {
@@ -162,7 +177,7 @@ class _AppointmentManagementScreenState
                       );
                     }
                   },
-                  child: const Text('إنشاء'),
+                  child: Text(AppLocalizations.of(context)?.create ?? 'إنشاء'),
                 ),
               ],
             );
@@ -198,42 +213,61 @@ class _AppointmentManagementScreenState
       symptoms: symptoms,
     );
 
-
     if (mounted) {
       setState(() => _isLoading = false);
       if (result['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم حجز الموعد بنجاح'),
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)?.appointmentBookedSuccess ??
+                  'تم حجز الموعد بنجاح',
+            ),
             backgroundColor: Colors.green,
           ),
         );
         await _loadAppointments();
         setState(() {}); // Force UI refresh
       } else {
-        final errorMsg = result['message'] ?? result['error'] ?? 'فشل الحجز';
+        final errorMsg =
+            result['message'] ??
+            result['error'] ??
+            (AppLocalizations.of(context)?.bookingFailed ?? 'فشل الحجز');
         debugPrint('Appointment creation failed: $errorMsg');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMsg),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
         );
       }
     }
   }
 
   Future<void> _confirmAppointment(Appointment appointment) async {
-    // API might not have confirm endpoint, simulated or update status
     final result = await DataService.updateAppointment(
       appointmentId: appointment.id,
       status: 'confirmed',
     );
+
+    if (!mounted) return;
+
     if (result['success']) {
-      _loadAppointments();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تم تأكيد الموعد')));
+      await _loadAppointments();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)?.appointmentConfirmed ??
+                  'تم قبول الموعد',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'فشل قبول الموعد'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -242,9 +276,14 @@ class _AppointmentManagementScreenState
     if (result['success']) {
       await _loadAppointments();
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('تم إلغاء الموعد')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)?.appointmentCancelled ??
+                  'تم إلغاء الموعد',
+            ),
+          ),
+        );
       }
     } else {
       if (mounted) {
@@ -257,20 +296,25 @@ class _AppointmentManagementScreenState
 
   Future<void> _rescheduleAppointment(Appointment appointment) async {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('خاصية إعادة الجدولة قيد التطوير')),
+      SnackBar(
+        content: Text(
+          AppLocalizations.of(context)?.calendarViewUnderDev ??
+              'خاصية إعادة الجدولة قيد التطوير',
+        ),
+      ),
     );
   }
 
   List<Appointment> _getFilteredAppointments() {
     return _appointments.where((appointment) {
-      if (_selectedFilter == 'اليوم') {
+      if (_selectedFilter == 'today') {
         final now = DateTime.now();
         return appointment.appointmentDate.year == now.year &&
             appointment.appointmentDate.month == now.month &&
             appointment.appointmentDate.day == now.day;
       }
       // Add 'Tomorrow' etc.
-      if (_selectedFilter == 'غداً') {
+      if (_selectedFilter == 'tomorrow') {
         final tomorrow = DateTime.now().add(const Duration(days: 1));
         return appointment.appointmentDate.year == tomorrow.year &&
             appointment.appointmentDate.month == tomorrow.month &&
@@ -285,7 +329,10 @@ class _AppointmentManagementScreenState
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('إدارة المواعيد'),
+        title: Text(
+          AppLocalizations.of(context)?.appointmentManagement ??
+              'إدارة المواعيد',
+        ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -320,7 +367,7 @@ class _AppointmentManagementScreenState
                               ),
                               child: Center(
                                 child: Text(
-                                  'قائمة',
+                                  AppLocalizations.of(context)?.list ?? 'قائمة',
                                   style: TextStyle(
                                     color: _isListView
                                         ? Colors.white
@@ -339,7 +386,8 @@ class _AppointmentManagementScreenState
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               child: Center(
                                 child: Text(
-                                  'تقويم',
+                                  AppLocalizations.of(context)?.calendar ??
+                                      'تقويم',
                                   style: TextStyle(
                                     color: _isListView
                                         ? AppColors.textSecondary
@@ -365,11 +413,23 @@ class _AppointmentManagementScreenState
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
-                      _buildFilterChip('الكل', _selectedFilter == 'الكل'),
+                      _buildFilterChip(
+                        AppLocalizations.of(context)?.all ?? 'الكل',
+                        'all',
+                        _selectedFilter == 'all',
+                      ),
                       const SizedBox(width: 8),
-                      _buildFilterChip('اليوم', _selectedFilter == 'اليوم'),
+                      _buildFilterChip(
+                        AppLocalizations.of(context)?.today ?? 'اليوم',
+                        'today',
+                        _selectedFilter == 'today',
+                      ),
                       const SizedBox(width: 8),
-                      _buildFilterChip('غداً', _selectedFilter == 'غداً'),
+                      _buildFilterChip(
+                        AppLocalizations.of(context)?.tomorrow ?? 'غداً',
+                        'tomorrow',
+                        _selectedFilter == 'tomorrow',
+                      ),
                     ],
                   ),
                 ),
@@ -395,9 +455,9 @@ class _AppointmentManagementScreenState
     final filteredAppointments = _getFilteredAppointments();
 
     if (filteredAppointments.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'لا توجد مواعيد',
+          AppLocalizations.of(context)?.noAppointments ?? 'لا توجد مواعيد',
           style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
         ),
       );
@@ -417,17 +477,18 @@ class _AppointmentManagementScreenState
   }
 
   Widget _buildCalendarView() {
-    return const Center(
+    return Center(
       child: Text(
-        'عرض التقويم قيد التطوير',
+        AppLocalizations.of(context)?.calendarViewUnderDev ??
+            'عرض التقويم قيد التطوير',
         style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
       ),
     );
   }
 
-  Widget _buildFilterChip(String label, bool isSelected) {
+  Widget _buildFilterChip(String label, String value, bool isSelected) {
     return GestureDetector(
-      onTap: () => setState(() => _selectedFilter = label),
+      onTap: () => setState(() => _selectedFilter = value),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         decoration: BoxDecoration(
@@ -466,7 +527,7 @@ class _AppointmentManagementScreenState
         color: AppColors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4),
         ],
       ),
       child: Column(
@@ -537,7 +598,8 @@ class _AppointmentManagementScreenState
                     child: GestureDetector(
                       onTap: () => _confirmAppointment(appointment),
                       child: _buildActionButton(
-                        'تأكيد الحضور',
+                        AppLocalizations.of(context)?.confirmAttendance ??
+                            'قبول',
                         Colors.green.shade100,
                         Colors.green,
                       ),
@@ -548,7 +610,7 @@ class _AppointmentManagementScreenState
                     child: GestureDetector(
                       onTap: () => _cancelAppointment(appointment),
                       child: _buildActionButton(
-                        'إلغاء',
+                        AppLocalizations.of(context)?.cancel ?? 'إلغاء',
                         Colors.red.shade100,
                         Colors.red,
                       ),
@@ -559,7 +621,8 @@ class _AppointmentManagementScreenState
                     child: GestureDetector(
                       onTap: () => _rescheduleAppointment(appointment),
                       child: _buildActionButton(
-                        'إعادة جدولة',
+                        AppLocalizations.of(context)?.reschedule ??
+                            'إعادة جدولة',
                         Colors.blue.shade100,
                         Colors.blue,
                       ),
@@ -570,7 +633,7 @@ class _AppointmentManagementScreenState
                     child: GestureDetector(
                       onTap: () => _cancelAppointment(appointment),
                       child: _buildActionButton(
-                        'إلغاء',
+                        AppLocalizations.of(context)?.cancel ?? 'إلغاء',
                         Colors.grey.shade100,
                         Colors.black,
                       ),

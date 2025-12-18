@@ -69,6 +69,10 @@ try {
     $query = "UPDATE appointments SET " . implode(', ', $fields) . " WHERE id = :id";
     $stmt = $conn->prepare($query);
     
+    // Debug logging
+    error_log("Query: " . $query);
+    error_log("Params: " . json_encode($params));
+
     if ($stmt->execute($params)) {
         echo json_encode([
             'success' => true,

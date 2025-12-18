@@ -4,6 +4,7 @@ import 'doctor_home_screen.dart';
 import 'appointment_management_screen.dart';
 import 'patient_list_screen.dart';
 import 'doctor_settings_screen.dart'; // Import Settings Screen
+import '../../core/localization/app_localizations.dart';
 
 class DoctorLayout extends StatefulWidget {
   const DoctorLayout({super.key});
@@ -33,17 +34,23 @@ class _DoctorLayoutState extends State<DoctorLayout> {
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textSecondary,
         showUnselectedLabels: true,
-        items: const [
+        items: [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_filled),
-            label: 'الرئيسية',
+            label: AppLocalizations.of(context)?.home ?? 'الرئيسية',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_today),
-            label: 'التقويم',
+            label: AppLocalizations.of(context)?.calendar ?? 'التقويم',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'المرضى'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'ملفي'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people),
+            label: AppLocalizations.of(context)?.patientsTitle ?? 'المرضى',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: AppLocalizations.of(context)?.myProfile ?? 'ملفي',
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(

@@ -1,0 +1,42 @@
+Analyzing doctor...                                             
+
+   info - Don't use 'BuildContext's across async gaps - lib\screens\doctor\appointment_management_screen.dart:235:9 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\appointment_management_screen.dart:469:41 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\doctor_chat_screen.dart:239:45 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\doctor_chat_screen.dart:264:47 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\doctor_chat_screen.dart:279:47 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\doctor_chat_screen.dart:346:49 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\doctor_chat_screen.dart:502:45 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\doctor_home_screen.dart:565:43 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\doctor_home_screen.dart:574:30 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\doctor_home_screen.dart:606:43 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\doctor_home_screen.dart:614:30 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\doctor_home_screen.dart:651:43 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\doctor_home_screen.dart:699:41 - deprecated_member_use
+  error - The getter 'calendar' isn't defined for the type 'AppLocalizations' - lib\screens\doctor\doctor_layout.dart:44:50 - undefined_getter
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\doctor_login_screen.dart:42:48 - deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\screens\doctor\doctor_login_screen.dart:170:41 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\screens\doctor\doctor_login_screen.dart:175:41 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\screens\doctor\doctor_login_screen.dart:188:58 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\screens\doctor\doctor_login_screen.dart:199:56 - use_build_context_synchronously
+warning - The value of the field '_doctorData' isn't used - lib\screens\doctor\doctor_settings_screen.dart:21:25 - unused_field
+   info - Don't use 'BuildContext's across async gaps - lib\screens\doctor\doctor_settings_screen.dart:60:9 - use_build_context_synchronously
+  error - The getter 'personalInfo' isn't defined for the type 'AppLocalizations' - lib\screens\doctor\doctor_settings_screen.dart:202:20 - undefined_getter
+  error - The getter 'address' isn't defined for the type 'AppLocalizations' - lib\screens\doctor\doctor_settings_screen.dart:217:30 - undefined_getter
+  error - The getter 'professionalInfo' isn't defined for the type 'AppLocalizations' - lib\screens\doctor\doctor_settings_screen.dart:225:20 - undefined_getter
+  error - The getter 'educationQualifications' isn't defined for the type 'AppLocalizations' - lib\screens\doctor\doctor_settings_screen.dart:257:30 - undefined_getter
+  error - The getter 'certificates' isn't defined for the type 'AppLocalizations' - lib\screens\doctor\doctor_settings_screen.dart:264:30 - undefined_getter
+  error - The getter 'saveChanges' isn't defined for the type 'AppLocalizations' - lib\screens\doctor\doctor_settings_screen.dart:273:27 - undefined_getter
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\screens\doctor\patient_file_screen.dart:256:13 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\screens\doctor\patient_file_screen.dart:261:32 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\screens\doctor\patient_file_screen.dart:270:11 - use_build_context_synchronously
+   info - Statements in an if should be enclosed in a block - lib\screens\doctor\patient_file_screen.dart:392:7 - curly_braces_in_flow_control_structures
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\patient_file_screen.dart:424:41 - deprecated_member_use
+   info - Statements in an if should be enclosed in a block - lib\screens\doctor\patient_file_screen.dart:498:7 - curly_braces_in_flow_control_structures
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\patient_file_screen.dart:530:41 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\patient_file_screen.dart:554:41 - deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps - lib\screens\doctor\patient_list_screen.dart:163:32 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\doctor\patient_list_screen.dart:169:44 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\screens\doctor\patient_list_screen.dart:176:44 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\doctor\patient_list_screen.dart:294:41 - deprecated_member_use
+

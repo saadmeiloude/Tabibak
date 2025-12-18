@@ -46,6 +46,7 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
 
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
+    var loc = AppLocalizations.of(context);
 
     setState(() => _isLoading = true);
 
@@ -66,8 +67,10 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
 
         if (result['success']) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('تم إنشاء حساب الطبيب بنجاح'),
+            SnackBar(
+              content: Text(
+                loc?.doctorRegisterSuccess ?? 'تم إنشاء حساب الطبيب بنجاح',
+              ),
               backgroundColor: Colors.green,
             ),
           );
@@ -121,7 +124,7 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'انضم كطبيب',
+                  loc?.joinAsDoctor ?? 'انضم كطبيب',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -134,7 +137,8 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
                   hintText: loc?.fullName ?? 'الاسم الكامل',
                   controller: _fullNameController,
                   prefixIcon: Icons.person,
-                  validator: (v) => v!.isEmpty ? 'الاسم مطلوب' : null,
+                  validator: (v) =>
+                      v!.isEmpty ? (loc?.fullName ?? 'مطلوب') : null,
                 ),
                 const SizedBox(height: 16),
 
@@ -157,18 +161,20 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
 
                 // Professional Info
                 CustomTextField(
-                  hintText: 'رقم الترخيص الطبي',
+                  hintText: loc?.licenseNumberLabel ?? 'رقم الترخيص الطبي',
                   controller: _licenseController,
                   prefixIcon: Icons.badge,
-                  validator: (v) => v!.isEmpty ? 'رقم الترخيص مطلوب' : null,
+                  validator: (v) =>
+                      v!.isEmpty ? (loc?.licenseNumberLabel ?? 'مطلوب') : null,
                 ),
                 const SizedBox(height: 16),
 
                 CustomTextField(
-                  hintText: 'التخصص (مثال: طب عام)',
+                  hintText: loc?.specializationLabel ?? 'التخصص (مثال: طب عام)',
                   controller: _specializationController,
                   prefixIcon: Icons.work,
-                  validator: (v) => v!.isEmpty ? 'التخصص مطلوب' : null,
+                  validator: (v) =>
+                      v!.isEmpty ? (loc?.specializationLabel ?? 'مطلوب') : null,
                 ),
                 const SizedBox(height: 16),
 
@@ -176,7 +182,7 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
                   children: [
                     Expanded(
                       child: CustomTextField(
-                        hintText: 'سنوات الخبرة',
+                        hintText: loc?.experienceYearsHint ?? 'سنوات الخبرة',
                         controller: _experienceController,
                         prefixIcon: Icons.history_edu,
                         keyboardType: TextInputType.number,
@@ -186,7 +192,7 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: CustomTextField(
-                        hintText: ' سعر الكشف (أوقية)',
+                        hintText: loc?.consultationFeeHint ?? 'سعر الكشف',
                         controller: _feeController,
                         prefixIcon: Icons.attach_money,
                         keyboardType: TextInputType.number,

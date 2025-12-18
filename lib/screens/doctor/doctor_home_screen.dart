@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
 import '../../services/data_service.dart';
 import '../../services/auth_service.dart';
+import '../../core/localization/app_localizations.dart';
 
 class DoctorHomeScreen extends StatefulWidget {
   const DoctorHomeScreen({super.key});
@@ -116,6 +117,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
   }
 
   void _showNotifications() {
+    var loc = AppLocalizations.of(context);
     // ... (Keep existing implementation)
     showModalBottomSheet(
       context: context,
@@ -126,9 +128,12 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'الإشعارات',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                loc?.recentNotifications ?? 'الإشعارات',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 16),
               ListTile(
@@ -145,6 +150,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
   }
 
   Future<void> _showReportsDialog() async {
+    var loc = AppLocalizations.of(context);
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -162,30 +168,33 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
           final revenue = data['revenue_today'] ?? 0;
 
           return AlertDialog(
-            title: const Text('تقارير اليوم', textAlign: TextAlign.center),
+            title: Text(
+              loc?.reportsDialogTitle ?? 'تقارير اليوم',
+              textAlign: TextAlign.center,
+            ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 ListTile(
                   leading: const Icon(Icons.show_chart, color: Colors.blue),
-                  title: const Text('إجمالي الدخل اليوم'),
+                  title: Text(loc?.totalIncomeToday ?? 'إجمالي الدخل اليوم'),
                   trailing: Text(
-                    '$revenue د.ج',
+                    '$revenue ${loc?.currencyMru ?? 'د.ج'}', // Using currency key
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
                 ListTile(
                   leading: const Icon(Icons.people, color: Colors.green),
-                  title: const Text('إجمالي المرضى'),
+                  title: Text(loc?.totalPatients ?? 'إجمالي المرضى'),
                   trailing: Text(
                     '${data['total_patients'] ?? 0}',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
                 const Divider(),
-                const Text(
-                  'حالة المواعيد',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                Text(
+                  loc?.appointmentStatusTitle ?? 'حالة المواعيد',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 ...todayStats.entries
                     .map<Widget>(
@@ -197,11 +206,11 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                     )
                     .toList(),
                 if (todayStats.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(8.0),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
                     child: Text(
-                      'لا توجد مواعيد اليوم',
-                      style: TextStyle(color: Colors.grey),
+                      loc?.noAppointmentsToday ?? 'لا توجد مواعيد اليوم',
+                      style: const TextStyle(color: Colors.grey),
                     ),
                   ),
               ],
@@ -209,7 +218,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('إغلاق'),
+                child: Text(loc?.close ?? 'إغلاق'),
               ),
             ],
           );
@@ -220,10 +229,11 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    var loc = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text('أهلاً بك، $_doctorName'),
+        title: Text('${loc?.welcome ?? 'أهلاً بك'}، $_doctorName'),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
@@ -254,9 +264,9 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
             children: [
               if (_isLoading) ...[
                 const SizedBox(height: 50),
-                const Center(child: CircularProgressIndicator()),
+                Center(child: CircularProgressIndicator()),
                 const SizedBox(height: 20),
-                const Center(child: Text('جاري تحميل البيانات...')),
+                Center(child: Text('جاري تحميل البيانات...')),
               ] else ...[
                 // Stats Row
                 Row(
@@ -264,7 +274,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                     Expanded(
                       child: _buildStatCard(
                         context,
-                        title: 'مواعيد اليوم',
+                        title: loc?.todayAppointments ?? 'مواعيد اليوم',
                         value: _todayAppointments.toString(),
                         icon: Icons.calendar_today,
                         color: Colors.blue,
@@ -278,7 +288,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                     Expanded(
                       child: _buildStatCard(
                         context,
-                        title: 'مرضى جدد',
+                        title: loc?.newPatients ?? 'مرضى جدد',
                         value: _newPatients.toString(),
                         icon: Icons.person_add,
                         color: Colors.green,
@@ -295,7 +305,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                     Expanded(
                       child: _buildStatCard(
                         context,
-                        title: 'إجمالي المرضى',
+                        title: loc?.totalPatients ?? 'إجمالي المرضى',
                         value: _totalPatients.toString(),
                         icon: Icons.people,
                         color: Colors.purple,
@@ -313,14 +323,14 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'المرضى المضافون حديثاً',
+                        loc?.recentlyAddedPatients ?? 'المرضى المضافون حديثاً',
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       TextButton(
                         onPressed: () =>
                             Navigator.pushNamed(context, '/patient-list'),
-                        child: const Text('عرض الكل'),
+                        child: Text(loc?.viewAll ?? 'عرض الكل'),
                       ),
                     ],
                   ),
@@ -388,7 +398,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
 
                 // Quick Actions
                 Text(
-                  'الإجراءات السريعة',
+                  loc?.quickActions ?? 'الإجراءات السريعة',
                   style: Theme.of(
                     context,
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
@@ -398,7 +408,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                   children: [
                     Expanded(
                       child: _buildQuickActionCard(
-                        'موعد جديد',
+                        loc?.newAppointmentAction ?? 'موعد جديد',
                         Icons.add_circle,
                         Colors.blue,
                         () => Navigator.pushNamed(
@@ -410,7 +420,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildQuickActionCard(
-                        'مريض جديد',
+                        loc?.newPatientAction ?? 'مريض جديد',
                         Icons.person_add,
                         Colors.green,
                         () => Navigator.pushNamed(context, '/patient-list'),
@@ -419,7 +429,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildQuickActionCard(
-                        'التقارير',
+                        loc?.reportsAction ?? 'التقارير',
                         Icons.analytics,
                         Colors.orange,
                         () => _showReportsDialog(),
@@ -434,7 +444,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'المواعيد القادمة',
+                      loc?.upcoming ?? 'المواعيد القادمة',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -442,7 +452,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                     TextButton(
                       onPressed: () =>
                           Navigator.pushNamed(context, '/doctor-appointments'),
-                      child: const Text('عرض الكل'),
+                      child: Text(loc?.viewAll ?? 'عرض الكل'),
                     ),
                   ],
                 ),
@@ -454,17 +464,20 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                       color: Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: const Column(
+                    child: Column(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.calendar_today,
                           size: 48,
                           color: Colors.grey,
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         Text(
-                          'لا توجد مواعيد قادمة',
-                          style: TextStyle(color: Colors.grey, fontSize: 16),
+                          loc?.noUpcomingAppointments ?? 'لا توجد مواعيد قادمة',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 16,
+                          ),
                         ),
                       ],
                     ),
@@ -491,7 +504,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'المرضى',
+                      loc?.patientsTitle ?? 'المرضى',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -499,13 +512,13 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                     TextButton(
                       onPressed: () =>
                           Navigator.pushNamed(context, '/patient-list'),
-                      child: const Text('عرض الكل'),
+                      child: Text(loc?.viewAll ?? 'عرض الكل'),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 if (_recentPatients.isEmpty)
-                  const Text('لا توجد بيانات مرضى')
+                  Text(loc?.noPatientsData ?? 'لا توجد بيانات مرضى')
                 else
                   ...List.generate(
                     _recentPatients.length.clamp(0, 3),
@@ -514,7 +527,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                         _buildPatientListItem(
                           context,
                           _recentPatients[index]['name'],
-                          'آخر زيارة: ${_recentPatients[index]['lastVisit']}',
+                          '${loc?.lastVisitLabel ?? 'آخر زيارة'}: ${_recentPatients[index]['lastVisit']}',
                           isNew: _recentPatients[index]['isNew'] ?? false,
                         ),
                         if (index < _recentPatients.length.clamp(0, 3) - 1)
@@ -675,6 +688,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
     String subtitle, {
     bool isNew = false,
   }) {
+    var loc = AppLocalizations.of(context);
     // ... (Keep existing implementation)
     return Container(
       padding: const EdgeInsets.all(12),
@@ -688,7 +702,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: isNew ? Colors.green : Colors.grey,
-          child: Icon(Icons.person, color: Colors.white),
+          child: const Icon(Icons.person, color: Colors.white),
         ),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(subtitle),
@@ -700,7 +714,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
               arguments: {'name': name},
             );
           },
-          child: const Text('عرض الملف'),
+          child: Text(loc?.viewFileAction ?? 'عرض الملف'),
         ),
       ),
     );
