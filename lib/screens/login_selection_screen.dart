@@ -87,17 +87,11 @@ class LoginSelectionScreen extends StatelessWidget {
               // Header
               Column(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.primary, width: 2),
-                    ),
-                    child: Icon(
-                      Icons.medical_services_outlined,
-                      size: 48,
-                      color: AppColors.primary,
-                    ),
+                  // Illustration
+                  Image.asset(
+                    'assets/images/Sign up-rafiki.png',
+                    height: 180,
+                    fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -123,7 +117,7 @@ class LoginSelectionScreen extends StatelessWidget {
               // Patient Login Card
               _buildLoginOption(
                 context: context,
-                icon: Icons.person_outline,
+                imagePath: 'assets/icons/male.png',
                 title: loc?.loginAsPatient ?? 'تسجيل الدخول كمريض',
                 subtitle: loc?.patientDesc ?? 'احجز مواعيدك وتابع صحتك',
                 color: Colors.blue,
@@ -142,7 +136,7 @@ class LoginSelectionScreen extends StatelessWidget {
               // Doctor Login Card
               _buildLoginOption(
                 context: context,
-                icon: Icons.medical_services_outlined,
+                imagePath: 'assets/icons/femmel.png',
                 title: loc?.loginAsDoctor ?? 'تسجيل الدخول كطبيب',
                 subtitle: loc?.doctorDesc ?? 'إدارة المواعيد ومتابعة المرضى',
                 color: AppColors.primary,
@@ -180,7 +174,8 @@ class LoginSelectionScreen extends StatelessWidget {
 
   Widget _buildLoginOption({
     required BuildContext context,
-    required IconData icon,
+    IconData? icon,
+    String? imagePath,
     required String title,
     required String subtitle,
     required Color color,
@@ -211,7 +206,9 @@ class LoginSelectionScreen extends StatelessWidget {
                 color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, size: 32, color: color),
+              child: imagePath != null
+                  ? Image.asset(imagePath, width: 32, height: 32, color: color)
+                  : Icon(icon, size: 32, color: color),
             ),
             const SizedBox(width: 16),
             Expanded(

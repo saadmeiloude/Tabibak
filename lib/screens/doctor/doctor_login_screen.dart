@@ -35,18 +35,11 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo Container
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(
-                      Icons.medical_services_rounded,
-                      size: 48,
-                      color: AppColors.primary,
-                    ),
+                  // Illustration
+                  Image.asset(
+                    'assets/images/Doctors-pana.png',
+                    height: 180,
+                    fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 16),
                   Text(

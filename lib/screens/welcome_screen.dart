@@ -86,20 +86,11 @@ class WelcomeScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Illustration Placeholder
-                  Container(
-                    height: 200,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.medical_services_outlined,
-                        size: 80,
-                        color: AppColors.primary,
-                      ),
-                    ),
+                  // Illustration
+                  Image.asset(
+                    'assets/images/Medicine-hom.png',
+                    height: 220,
+                    fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 32),
                   // Logo/Title
