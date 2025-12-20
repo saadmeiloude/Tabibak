@@ -32,14 +32,23 @@ try {
     $db = Database::getInstance();
     $conn = $db->getConnection();
     
-    // Check if login is by email or phone
-    $query = "SELECT * FROM users WHERE (email = :email OR phone = :phone) AND is_active = 1";
+    // Check for user in users table (patients)
+    $query = "SELECT *, 'patient' as user_type FROM users WHERE (email = :email OR phone = :phone) AND is_active = 1";
     $stmt = $conn->prepare($query);
     $stmt->bindParam(':email', $identifier);
     $stmt->bindParam(':phone', $identifier);
     $stmt->execute();
-    
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // If not found in users, check doctors table
+    if (!$user) {
+        $query = "SELECT *, 'doctor' as user_type FROM doctors WHERE (email = :email OR phone = :phone) AND is_active = 1";
+        $stmt = $conn->prepare($query);
+        $stmt->bindParam(':email', $identifier);
+        $stmt->bindParam(':phone', $identifier);
+        $stmt->execute();
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
     
     if (!$user || !password_verify($password, $user['password'])) {
         http_response_code(401);
@@ -58,10 +67,11 @@ try {
     $expiresAt = date('Y-m-d H:i:s', strtotime('+30 days'));
     
     // Store session in database
-    $insertQuery = "INSERT INTO user_sessions (user_id, token, expires_at) VALUES (:user_id, :token, :expires_at)";
+    $insertQuery = "INSERT INTO user_sessions (user_id, token, user_type, expires_at) VALUES (:user_id, :token, :user_type, :expires_at)";
     $insertStmt = $conn->prepare($insertQuery);
     $insertStmt->bindParam(':user_id', $user['id']);
     $insertStmt->bindParam(':token', $token);
+    $insertStmt->bindParam(':user_type', $user['user_type']);
     $insertStmt->bindParam(':expires_at', $expiresAt);
     $insertStmt->execute();
     

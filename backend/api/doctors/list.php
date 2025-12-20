@@ -14,10 +14,7 @@ try {
     
     $specialization = isset($_GET['specialization']) ? $_GET['specialization'] : null;
     
-    $query = "SELECT d.*, u.full_name as name, u.email, u.phone, u.profile_image 
-              FROM doctors d 
-              JOIN users u ON d.user_id = u.id 
-              WHERE u.is_active = 1";
+    $query = "SELECT *, full_name as name FROM doctors WHERE is_active = 1";
               
     if ($specialization) {
         $query .= " AND d.specialization LIKE :specialization";

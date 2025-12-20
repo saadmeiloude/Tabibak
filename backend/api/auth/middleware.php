@@ -21,19 +21,38 @@ function authenticate() {
         $db = Database::getInstance();
         $conn = $db->getConnection();
         
-        $query = "SELECT u.* FROM users u 
-                  JOIN user_sessions s ON u.id = s.user_id 
-                  WHERE s.token = :token AND s.expires_at > NOW()";
+        // First get session to know user_type
+        $sessionQuery = "SELECT user_id, user_type FROM user_sessions WHERE token = :token AND expires_at > NOW()";
+        $sessionStmt = $conn->prepare($sessionQuery);
+        $sessionStmt->bindParam(':token', $token);
+        $sessionStmt->execute();
+        $session = $sessionStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$session) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Invalid or expired token']);
+            exit;
+        }
+
+        $userId = $session['user_id'];
+        $userType = $session['user_type'];
+
+        // Now fetch user from appropriate table
+        if ($userType === 'doctor') {
+            $query = "SELECT *, 'doctor' as user_type FROM doctors WHERE id = :id";
+        } else {
+            $query = "SELECT *, 'patient' as user_type FROM users WHERE id = :id";
+        }
         
         $stmt = $conn->prepare($query);
-        $stmt->bindParam(':token', $token);
+        $stmt->bindParam(':id', $userId);
         $stmt->execute();
         
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$user) {
             http_response_code(401);
-            echo json_encode(['error' => 'Invalid or expired token']);
+            echo json_encode(['error' => 'User not found']);
             exit;
         }
         

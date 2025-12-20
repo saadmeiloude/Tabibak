@@ -57,8 +57,10 @@ try {
     $db = Database::getInstance();
     $conn = $db->getConnection();
     
-    // Check if email or phone already exists
-    $checkQuery = "SELECT id FROM users WHERE email = :email OR phone = :phone";
+    // Check if email or phone already exists in either table
+    $checkQuery = "SELECT id FROM users WHERE email = :email OR phone = :phone 
+                   UNION 
+                   SELECT id FROM doctors WHERE email = :email OR phone = :phone";
     $checkStmt = $conn->prepare($checkQuery);
     $checkStmt->bindParam(':email', $email);
     $checkStmt->bindParam(':phone', $phone);

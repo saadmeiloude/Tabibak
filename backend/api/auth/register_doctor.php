@@ -49,8 +49,10 @@ try {
     // Start transaction
     $conn->beginTransaction();
 
-    // Check if email/phone exists
-    $checkQuery = "SELECT id FROM users WHERE email = :email OR phone = :phone";
+    // Check if email/phone exists in either table to prevent duplicates
+    $checkQuery = "SELECT id FROM users WHERE email = :email OR phone = :phone 
+                   UNION 
+                   SELECT id FROM doctors WHERE email = :email OR phone = :phone";
     $checkStmt = $conn->prepare($checkQuery);
     $checkStmt->bindParam(':email', $email);
     $checkStmt->bindParam(':phone', $phone);
@@ -76,39 +78,19 @@ try {
         exit;
     }
 
-    // Insert user
     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-    $insertUser = "INSERT INTO users (full_name, email, phone, password, user_type, verification_method, date_of_birth, gender, address, is_verified) 
-                   VALUES (:full_name, :email, :phone, :password, 'doctor', :verification_method, :date_of_birth, :gender, :address, 1)";
-    
-    $stmtUser = $conn->prepare($insertUser);
-    $stmtUser->bindParam(':full_name', $fullName);
-    $stmtUser->bindParam(':email', $email);
-    $stmtUser->bindParam(':phone', $phone);
-    $stmtUser->bindParam(':password', $hashedPassword);
-    $stmtUser->bindParam(':verification_method', $verificationMethod);
-    $stmtUser->bindParam(':date_of_birth', $dateOfBirth);
-    $stmtUser->bindParam(':gender', $gender);
-    $stmtUser->bindParam(':address', $address);
-    
-    if (!$stmtUser->execute()) {
-        throw new Exception("Failed to create user account");
-    }
-    
-    $userId = $conn->lastInsertId();
+    $consultationFee = isset($input['consultation_fee']) ? floatval($input['consultation_fee']) : 0.0;
+    $experienceYears = isset($input['experience_years']) ? intval($input['experience_years']) : 0;
 
-$consultationFee = isset($input['consultation_fee']) ? floatval($input['consultation_fee']) : 0.0;
-$experienceYears = isset($input['experience_years']) ? intval($input['experience_years']) : 0;
-
-// Update required fields validation if strictly needed, but let's keep them optional or check them if preferred.
-// For now, accepting 0 as default is fine, but better to request them if meaningful.
-
-    // Insert doctor details
-    $insertDoctor = "INSERT INTO doctors (user_id, license_number, specialization, experience_years, consultation_fee, is_available) 
-                     VALUES (:user_id, :license_number, :specialization, :experience_years, :consultation_fee, 1)";
+    // Insert directly into doctors table
+    $insertDoctor = "INSERT INTO doctors (full_name, email, phone, password, license_number, specialization, experience_years, consultation_fee, is_verified, is_available) 
+                     VALUES (:full_name, :email, :phone, :password, :license_number, :specialization, :experience_years, :consultation_fee, 1, 1)";
     
     $stmtDoctor = $conn->prepare($insertDoctor);
-    $stmtDoctor->bindParam(':user_id', $userId);
+    $stmtDoctor->bindParam(':full_name', $fullName);
+    $stmtDoctor->bindParam(':email', $email);
+    $stmtDoctor->bindParam(':phone', $phone);
+    $stmtDoctor->bindParam(':password', $hashedPassword);
     $stmtDoctor->bindParam(':license_number', $licenseNumber);
     $stmtDoctor->bindParam(':specialization', $specialization);
     $stmtDoctor->bindParam(':experience_years', $experienceYears);
@@ -117,15 +99,18 @@ $experienceYears = isset($input['experience_years']) ? intval($input['experience
     if (!$stmtDoctor->execute()) {
         throw new Exception("Failed to create doctor profile");
     }
+    
+    $doctorId = $conn->lastInsertId();
 
     $conn->commit();
 
-    // Get created user
-    $userQuery = "SELECT id, full_name, email, phone, user_type, verification_method, is_verified, created_at FROM users WHERE id = :id";
+    // Get created doctor
+    $userQuery = "SELECT id, full_name, email, phone, license_number, specialization, is_verified, created_at FROM doctors WHERE id = :id";
     $userStmt = $conn->prepare($userQuery);
-    $userStmt->bindParam(':id', $userId);
+    $userStmt->bindParam(':id', $doctorId);
     $userStmt->execute();
     $user = $userStmt->fetch(PDO::FETCH_ASSOC);
+    $user['user_type'] = 'doctor'; // Essential for frontend logic
 
     echo json_encode([
         'success' => true,
