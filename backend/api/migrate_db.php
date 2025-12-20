@@ -78,6 +78,21 @@ try {
         echo "Seed data for 'specialties' added.\n";
     }
 
+    // 5. Create payment_cards table
+    $conn->exec("CREATE TABLE IF NOT EXISTS payment_cards (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        card_type ENUM('visa', 'mada', 'mastercard', 'other') DEFAULT 'visa',
+        card_number_masked VARCHAR(20) NOT NULL,
+        holder_name VARCHAR(100) NOT NULL,
+        expiry_date VARCHAR(10) NOT NULL,
+        is_default TINYINT(1) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )");
+    echo "Table 'payment_cards' created/verified.\n";
+
     echo "Database refactoring completed successfully.";
 
 } catch (Exception $e) {

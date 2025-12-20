@@ -1030,13 +1030,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Text(AppLocalizations.of(context)?.cancel ?? 'إلغاء'),
             ),
             ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.pushNamedAndRemoveUntil(
-                  context,
-                  '/login',
-                  (route) => false,
-                );
+              onPressed: () async {
+                await AuthService.logout();
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    '/',
+                    (route) => false,
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               child: Text(

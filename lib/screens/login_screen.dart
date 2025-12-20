@@ -96,7 +96,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 backgroundColor: Colors.red,
               ),
             );
-            AuthService.logout();
+            await AuthService.logout();
+            if (context.mounted) {
+              Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+            }
           }
         } else {
           // Show error message

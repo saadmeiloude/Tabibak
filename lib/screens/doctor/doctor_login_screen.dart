@@ -187,7 +187,14 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                                           backgroundColor: Colors.red,
                                         ),
                                       );
-                                      AuthService.logout(); // Logout if not a doctor
+                                      await AuthService.logout();
+                                      if (context.mounted) {
+                                        Navigator.pushNamedAndRemoveUntil(
+                                          context,
+                                          '/',
+                                          (route) => false,
+                                        );
+                                      }
                                     }
                                   } else {
                                     ScaffoldMessenger.of(context).showSnackBar(

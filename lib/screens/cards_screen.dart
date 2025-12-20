@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
 import '../widgets/custom_button.dart';
+import '../services/api_service.dart';
+import '../core/localization/app_localizations.dart';
 
 class CardsScreen extends StatefulWidget {
   const CardsScreen({super.key});
@@ -10,48 +12,81 @@ class CardsScreen extends StatefulWidget {
 }
 
 class _CardsScreenState extends State<CardsScreen> {
-  List<Map<String, dynamic>> _cards = [
-    {
-      'id': '1',
-      'type': 'visa',
-      'number': '**** **** **** 1234',
-      'holderName': '',
-      'expiryDate': '12/26',
-      'isDefault': true,
-    },
-    {
-      'id': '2',
-      'type': 'mada',
-      'number': '**** **** **** 5678',
-      'holderName': '',
-      'expiryDate': '08/25',
-      'isDefault': false,
-    },
-  ];
+  List<Map<String, dynamic>> _cards = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCards();
+  }
+
+  Future<void> _fetchCards() async {
+    setState(() => _isLoading = true);
+    try {
+      final response = await ApiService.request(
+        endpoint: 'api/cards/list.php',
+        method: 'GET',
+        requiresAuth: true,
+      );
+      final result = ApiService.handleResponse(response);
+      if (result['success']) {
+        setState(() {
+          _cards = List<Map<String, dynamic>>.from(result['data']);
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+        _showError(result['error'] ?? 'Failed to load cards');
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      _showError(e.toString());
+    }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  void _showSuccess(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('بطاقاتي'),
+        title: Text(loc?.myCards ?? 'بطاقاتي'),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
           IconButton(
             onPressed: () {
-              _showAddCardDialog();
+              if (loc != null) _showAddCardDialog(loc);
             },
             icon: const Icon(Icons.add),
           ),
         ],
       ),
-      body: _cards.isEmpty ? _buildEmptyState() : _buildCardsList(),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _cards.isEmpty
+          ? _buildEmptyState(loc)
+          : _buildCardsList(loc),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppLocalizations? loc) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -59,7 +94,7 @@ class _CardsScreenState extends State<CardsScreen> {
           Icon(Icons.credit_card, size: 80, color: AppColors.textSecondary),
           const SizedBox(height: 16),
           Text(
-            'لا توجد بطاقات محفوظة',
+            loc?.noCardsFound ?? 'لا توجد بطاقات محفوظة',
             style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 18,
@@ -68,14 +103,14 @@ class _CardsScreenState extends State<CardsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'أضف بطاقة دفع لإجراء حجوزاتك بسهولة',
+            loc?.addCardHint ?? 'أضف بطاقة دفع لإجراء حجوزاتك بسهولة',
             style: TextStyle(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 24),
           CustomButton(
-            text: 'إضافة بطاقة',
+            text: loc?.addCardTitle ?? 'إضافة بطاقة',
             onPressed: () {
-              _showAddCardDialog();
+              if (loc != null) _showAddCardDialog(loc);
             },
           ),
         ],
@@ -83,20 +118,24 @@ class _CardsScreenState extends State<CardsScreen> {
     );
   }
 
-  Widget _buildCardsList() {
+  Widget _buildCardsList(AppLocalizations? loc) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: _cards.length,
       itemBuilder: (context, index) {
         final card = _cards[index];
-        return _buildCardWidget(card, index);
+        return _buildCardWidget(card, index, loc);
       },
     );
   }
 
-  Widget _buildCardWidget(Map<String, dynamic> card, int index) {
-    final isDefault = card['isDefault'] as bool;
-    final cardType = card['type'] as String;
+  Widget _buildCardWidget(
+    Map<String, dynamic> card,
+    int index,
+    AppLocalizations? loc,
+  ) {
+    final isDefault = (card['is_default'] == 1 || card['is_default'] == '1');
+    final cardType = card['card_type'] as String;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -123,7 +162,7 @@ class _CardsScreenState extends State<CardsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                _getCardTypeName(cardType),
+                _getCardTypeName(cardType, loc),
                 style: const TextStyle(color: Colors.white70, fontSize: 14),
               ),
               Icon(_getCardIcon(cardType), color: Colors.white, size: 24),
@@ -131,7 +170,7 @@ class _CardsScreenState extends State<CardsScreen> {
           ),
           const SizedBox(height: 20),
           Text(
-            card['number'],
+            card['card_number_masked'] ?? card['number'] ?? '',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -147,11 +186,11 @@ class _CardsScreenState extends State<CardsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'حامل البطاقة',
-                    style: TextStyle(color: Colors.white70, fontSize: 10),
+                    loc?.cardHolderShort ?? 'حامل البطاقة',
+                    style: const TextStyle(color: Colors.white70, fontSize: 10),
                   ),
                   Text(
-                    card['holderName'],
+                    card['holder_name'] ?? card['holderName'] ?? '',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
@@ -164,11 +203,11 @@ class _CardsScreenState extends State<CardsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    'صالح حتى',
-                    style: TextStyle(color: Colors.white70, fontSize: 10),
+                    loc?.validThru ?? 'صالح حتى',
+                    style: const TextStyle(color: Colors.white70, fontSize: 10),
                   ),
                   Text(
-                    card['expiryDate'],
+                    card['expiry_date'] ?? card['expiryDate'] ?? '',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
@@ -187,9 +226,9 @@ class _CardsScreenState extends State<CardsScreen> {
                 color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: const Text(
-                'افتراضي',
-                style: TextStyle(
+              child: Text(
+                loc?.defaultLabel ?? 'افتراضي',
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
@@ -203,16 +242,16 @@ class _CardsScreenState extends State<CardsScreen> {
               if (!isDefault)
                 TextButton(
                   onPressed: () {
-                    _setAsDefault(index);
+                    _setAsDefault(card['id']);
                   },
-                  child: const Text(
-                    'تعيين كافتراضي',
-                    style: TextStyle(color: Colors.white70),
+                  child: Text(
+                    loc?.setAsDefaultLabel ?? 'تعيين كافتراضي',
+                    style: const TextStyle(color: Colors.white70),
                   ),
                 ),
               IconButton(
                 onPressed: () {
-                  _showCardOptions(index);
+                  _showCardOptions(index, loc);
                 },
                 icon: const Icon(Icons.more_vert, color: Colors.white70),
               ),
@@ -239,42 +278,52 @@ class _CardsScreenState extends State<CardsScreen> {
   IconData _getCardIcon(String cardType) {
     switch (cardType) {
       case 'visa':
+      case 'mastercard':
         return Icons.credit_card;
       case 'mada':
         return Icons.payment;
-      case 'mastercard':
-        return Icons.credit_card;
       default:
         return Icons.credit_card;
     }
   }
 
-  String _getCardTypeName(String cardType) {
+  String _getCardTypeName(String cardType, AppLocalizations? loc) {
     switch (cardType) {
       case 'visa':
-        return 'Visa';
+        return loc?.visaLabel ?? 'Visa';
       case 'mada':
-        return 'مدى';
+        return loc?.madaLabel ?? 'مدى';
       case 'mastercard':
-        return 'Mastercard';
+        return loc?.mastercardLabel ?? 'Mastercard';
       default:
-        return 'بطاقة';
+        return loc?.cardLabel ?? 'بطاقة';
     }
   }
 
-  void _setAsDefault(int index) {
-    setState(() {
-      for (var card in _cards) {
-        card['isDefault'] = false;
+  Future<void> _setAsDefault(dynamic id) async {
+    try {
+      final response = await ApiService.request(
+        endpoint: 'api/cards/set_default.php',
+        method: 'POST',
+        data: {'id': id},
+        requiresAuth: true,
+      );
+      final result = ApiService.handleResponse(response);
+      if (result['success']) {
+        _showSuccess(
+          AppLocalizations.of(context)?.cardDefaultSuccess ??
+              'تم تعيين البطاقة كافتراضية',
+        );
+        _fetchCards();
+      } else {
+        _showError(result['error'] ?? 'Operation failed');
       }
-      _cards[index]['isDefault'] = true;
-    });
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('تم تعيين البطاقة كافتراضية')));
+    } catch (e) {
+      _showError(e.toString());
+    }
   }
 
-  void _showCardOptions(int index) {
+  void _showCardOptions(int index, AppLocalizations? loc) {
     showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {
@@ -284,19 +333,11 @@ class _CardsScreenState extends State<CardsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.edit),
-                title: const Text('تعديل'),
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: Text(loc?.delete ?? 'حذف'),
                 onTap: () {
                   Navigator.pop(context);
-                  _editCard(index);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete),
-                title: const Text('حذف'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _deleteCard(index);
+                  _deleteCard(_cards[index]['id']);
                 },
               ),
             ],
@@ -306,39 +347,41 @@ class _CardsScreenState extends State<CardsScreen> {
     );
   }
 
-  void _showAddCardDialog() {
+  void _showAddCardDialog(AppLocalizations loc) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AddCardDialog(
           onCardAdded: (card) {
-            setState(() {
-              _cards.add(card);
-            });
             Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('تم إضافة البطاقة بنجاح')),
-            );
+            _fetchCards();
+            _showSuccess(loc.cardAddedSuccess);
           },
         );
       },
     );
   }
 
-  void _editCard(int index) {
-    // Implement edit card functionality
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('تعديل البطاقة قريباً')));
-  }
-
-  void _deleteCard(int index) {
-    setState(() {
-      _cards.removeAt(index);
-    });
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('تم حذف البطاقة')));
+  Future<void> _deleteCard(dynamic id) async {
+    try {
+      final response = await ApiService.request(
+        endpoint: 'api/cards/delete.php',
+        method: 'POST',
+        data: {'id': id},
+        requiresAuth: true,
+      );
+      final result = ApiService.handleResponse(response);
+      if (result['success']) {
+        _showSuccess(
+          AppLocalizations.of(context)?.cardDeletedSuccess ?? 'تم حذف البطاقة',
+        );
+        _fetchCards();
+      } else {
+        _showError(result['error'] ?? 'Delete failed');
+      }
+    } catch (e) {
+      _showError(e.toString());
+    }
   }
 }
 
@@ -359,30 +402,74 @@ class _AddCardDialogState extends State<AddCardDialog> {
   final _cvvController = TextEditingController();
 
   String _cardType = 'visa';
+  bool _isLoading = false;
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await ApiService.request(
+        endpoint: 'api/cards/create.php',
+        method: 'POST',
+        data: {
+          'card_type': _cardType,
+          'card_number': _cardNumberController.text,
+          'holder_name': _holderNameController.text,
+          'expiry_date': _expiryDateController.text,
+        },
+        requiresAuth: true,
+      );
+      final result = ApiService.handleResponse(response);
+      if (result['success']) {
+        widget.onCardAdded(result['data']);
+      } else {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['error'] ?? 'Failed to add card'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return AlertDialog(
-      title: const Text('إضافة بطاقة جديدة'),
+      title: Text(loc?.addCardTitle ?? 'إضافة بطاقة جديدة'),
       content: Form(
         key: _formKey,
-        child: SizedBox(
-          width: double.maxFinite,
+        child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<String>(
                 value: _cardType,
-                decoration: const InputDecoration(
-                  labelText: 'نوع البطاقة',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: loc?.cardTypeLabel ?? 'نوع البطاقة',
+                  border: const OutlineInputBorder(),
                 ),
-                items: const [
-                  DropdownMenuItem(value: 'visa', child: Text('Visa')),
-                  DropdownMenuItem(value: 'mada', child: Text('مدى')),
+                items: [
+                  DropdownMenuItem(
+                    value: 'visa',
+                    child: Text(loc?.visaLabel ?? 'Visa'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'mada',
+                    child: Text(loc?.madaLabel ?? 'مدى'),
+                  ),
                   DropdownMenuItem(
                     value: 'mastercard',
-                    child: Text('Mastercard'),
+                    child: Text(loc?.mastercardLabel ?? 'Mastercard'),
                   ),
                 ],
                 onChanged: (value) {
@@ -394,13 +481,14 @@ class _AddCardDialogState extends State<AddCardDialog> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _cardNumberController,
-                decoration: const InputDecoration(
-                  labelText: 'رقم البطاقة',
-                  border: OutlineInputBorder(),
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: loc?.cardNumberLabel ?? 'رقم البطاقة',
+                  border: const OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'يرجى إدخال رقم البطاقة';
+                    return loc?.error ?? 'يرجى إدخال رقم البطاقة';
                   }
                   return null;
                 },
@@ -408,13 +496,13 @@ class _AddCardDialogState extends State<AddCardDialog> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _holderNameController,
-                decoration: const InputDecoration(
-                  labelText: 'اسم حامل البطاقة',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: loc?.cardHolderNameLabel ?? 'اسم حامل البطاقة',
+                  border: const OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'يرجى إدخال اسم حامل البطاقة';
+                    return loc?.error ?? 'يرجى إدخال اسم حامل البطاقة';
                   }
                   return null;
                 },
@@ -425,13 +513,14 @@ class _AddCardDialogState extends State<AddCardDialog> {
                   Expanded(
                     child: TextFormField(
                       controller: _expiryDateController,
-                      decoration: const InputDecoration(
-                        labelText: 'تاريخ الانتهاء (MM/YY)',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText:
+                            loc?.expiryDateLabel ?? 'تاريخ الانتهاء (MM/YY)',
+                        border: const OutlineInputBorder(),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'مطلوب';
+                          return loc?.error ?? 'مطلوب';
                         }
                         return null;
                       },
@@ -441,13 +530,15 @@ class _AddCardDialogState extends State<AddCardDialog> {
                   Expanded(
                     child: TextFormField(
                       controller: _cvvController,
-                      decoration: const InputDecoration(
-                        labelText: 'CVV',
-                        border: OutlineInputBorder(),
+                      obscureText: true,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: loc?.cvvLabel ?? 'CVV',
+                        border: const OutlineInputBorder(),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'مطلوب';
+                          return loc?.error ?? 'مطلوب';
                         }
                         return null;
                       },
@@ -461,27 +552,18 @@ class _AddCardDialogState extends State<AddCardDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: const Text('إلغاء'),
+          onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+          child: Text(loc?.cancel ?? 'إلغاء'),
         ),
         ElevatedButton(
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              final card = {
-                'id': DateTime.now().millisecondsSinceEpoch.toString(),
-                'type': _cardType,
-                'number':
-                    '**** **** **** ${_cardNumberController.text.substring(_cardNumberController.text.length - 4)}',
-                'holderName': _holderNameController.text,
-                'expiryDate': _expiryDateController.text,
-                'isDefault': false,
-              };
-              widget.onCardAdded(card);
-            }
-          },
-          child: const Text('إضافة'),
+          onPressed: _isLoading ? null : _submit,
+          child: _isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(loc?.add ?? 'إضافة'),
         ),
       ],
     );

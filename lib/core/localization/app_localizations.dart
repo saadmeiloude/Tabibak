@@ -348,6 +348,27 @@ class AppLocalizations {
       translate('appointment_booked_success');
   String get bookingFailed => translate('booking_failed');
   String get noCustomersWarning => translate('no_customers_warning');
+
+  // Payment Card Keys
+  String get addCardTitle => translate('add_card_title');
+  String get cardTypeLabel => translate('card_type_label');
+  String get cardNumberLabel => translate('card_number_label');
+  String get cardHolderNameLabel => translate('card_holder_name_label');
+  String get expiryDateLabel => translate('expiry_date_label');
+  String get cvvLabel => translate('cvv_label');
+  String get setAsDefaultLabel => translate('set_as_default_label');
+  String get defaultLabel => translate('default_label');
+  String get visaLabel => translate('visa_label');
+  String get madaLabel => translate('mada_label');
+  String get mastercardLabel => translate('mastercard_label');
+  String get cardLabel => translate('card_label');
+  String get cardAddedSuccess => translate('card_added_success');
+  String get cardDeletedSuccess => translate('card_deleted_success');
+  String get cardDefaultSuccess => translate('card_default_success');
+  String get noCardsFound => translate('no_cards_found');
+  String get addCardHint => translate('add_card_hint');
+  String get cardHolderShort => translate('card_holder_short');
+  String get validThru => translate('valid_thru');
 }
 
 class _AppLocalizationsDelegate

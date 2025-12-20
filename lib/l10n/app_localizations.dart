@@ -1699,6 +1699,120 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'لا يوجد مرضى مسجلين. الرجاء إضافة مريض أولاً.'**
   String get no_customers_warning;
+
+  /// No description provided for @add_card_title.
+  ///
+  /// In ar, this message translates to:
+  /// **'إضافة بطاقة جديدة'**
+  String get add_card_title;
+
+  /// No description provided for @card_type_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'نوع البطاقة'**
+  String get card_type_label;
+
+  /// No description provided for @card_number_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'رقم البطاقة'**
+  String get card_number_label;
+
+  /// No description provided for @card_holder_name_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'اسم حامل البطاقة'**
+  String get card_holder_name_label;
+
+  /// No description provided for @expiry_date_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'تاريخ الانتهاء (MM/YY)'**
+  String get expiry_date_label;
+
+  /// No description provided for @cvv_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'CVV'**
+  String get cvv_label;
+
+  /// No description provided for @set_as_default_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعيين كافتراضي'**
+  String get set_as_default_label;
+
+  /// No description provided for @default_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'افتراضي'**
+  String get default_label;
+
+  /// No description provided for @visa_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'Visa'**
+  String get visa_label;
+
+  /// No description provided for @mada_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'مدى'**
+  String get mada_label;
+
+  /// No description provided for @mastercard_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'Mastercard'**
+  String get mastercard_label;
+
+  /// No description provided for @card_label.
+  ///
+  /// In ar, this message translates to:
+  /// **'بطاقة'**
+  String get card_label;
+
+  /// No description provided for @card_added_success.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إضافة البطاقة بنجاح'**
+  String get card_added_success;
+
+  /// No description provided for @card_deleted_success.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم حذف البطاقة بنجاح'**
+  String get card_deleted_success;
+
+  /// No description provided for @card_default_success.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم تعيين البطاقة كافتراضية بنجاح'**
+  String get card_default_success;
+
+  /// No description provided for @no_cards_found.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا توجد بطاقة محفوظة'**
+  String get no_cards_found;
+
+  /// No description provided for @add_card_hint.
+  ///
+  /// In ar, this message translates to:
+  /// **'أضف بطاقة دفع لإجراء حجوزاتك بسهولة'**
+  String get add_card_hint;
+
+  /// No description provided for @card_holder_short.
+  ///
+  /// In ar, this message translates to:
+  /// **'حامل البطاقة'**
+  String get card_holder_short;
+
+  /// No description provided for @valid_thru.
+  ///
+  /// In ar, this message translates to:
+  /// **'صالح حتى'**
+  String get valid_thru;
 }
 
 class _AppLocalizationsDelegate
