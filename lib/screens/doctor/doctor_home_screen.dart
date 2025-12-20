@@ -196,16 +196,19 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                   loc?.appointmentStatusTitle ?? 'حالة المواعيد',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                ...todayStats.entries
-                    .map<Widget>(
-                      (e) => ListTile(
-                        dense: true,
-                        title: Text(e.key.toString().toUpperCase()),
-                        trailing: Text(e.value.toString()),
-                      ),
-                    )
-                    .toList(),
-                if (todayStats.isEmpty)
+                if (todayStats is Map)
+                  ...todayStats.entries
+                      .map<Widget>(
+                        (e) => ListTile(
+                          dense: true,
+                          title: Text(e.key.toString().toUpperCase()),
+                          trailing: Text(e.value.toString()),
+                        ),
+                      )
+                      .toList(),
+                if (todayStats == null ||
+                    (todayStats is Map && todayStats.isEmpty) ||
+                    (todayStats is List && todayStats.isEmpty))
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Text(

@@ -130,17 +130,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Logo
                 Column(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.primary, width: 2),
-                      ),
-                      child: Icon(
-                        Icons.medical_services_outlined,
-                        size: 48,
-                        color: AppColors.primary,
-                      ),
+                    Image.asset(
+                      'assets/images/Login-amico.png',
+                      height: 180,
+                      fit: BoxFit.contain,
                     ),
                     const SizedBox(height: 8),
                     Text(

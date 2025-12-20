@@ -1,5 +1,13 @@
 <?php
 header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit;
+}
+
 require_once '../../config/database.php';
 require_once '../auth/middleware.php';
 
@@ -10,10 +18,31 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $user = authenticate();
-$input = json_decode(file_get_contents('php://input'), true);
 
-// Only doctors can typically create specific records, but patients might upload some.
-// For now, allow creation if authenticated. Assuming input validation handles logic.
+// Handle file upload if present
+$attachmentsPath = null;
+if (isset($_FILES['file'])) {
+    $file = $_FILES['file'];
+    $uploadDir = '../../uploads/medical_records/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0777, true);
+    }
+    
+    $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+    $fileName = 'record_' . $user['id'] . '_' . time() . '.' . $extension;
+    $uploadFile = $uploadDir . $fileName;
+    
+    if (move_uploaded_file($file['tmp_name'], $uploadFile)) {
+        $attachmentsPath = 'uploads/medical_records/' . $fileName;
+    }
+}
+
+// Check if it's a JSON request or Multipart
+if (empty($_POST) && !isset($_FILES['file'])) {
+    $input = json_decode(file_get_contents('php://input'), true);
+} else {
+    $input = $_POST;
+}
 
 $requiredFields = ['title', 'record_type'];
 foreach ($requiredFields as $field) {
@@ -28,15 +57,11 @@ try {
     $db = Database::getInstance();
     $conn = $db->getConnection();
     
-    // Default to current user as patient AND doctor if not specified (self-uploaded record)
-    // Or if doctor is creating, patient_id must be provided.
-    // Let's assume for now the user is uploading their own record or a doctor uploading for a patient.
-    
     $patientId = $input['patient_id'] ?? $user['id'];
-    $doctorId = $input['doctor_id'] ?? $user['id']; // If self-upload, doctor_id might be self or null? DB says NOT NULL.
-    // If patient uploads, maybe assign a system doctor ID or self? 
-    // Let's use user['id'] for both if not provided, assuming self-record.
+    $doctorId = $input['doctor_id'] ?? $user['id'];
     
+    $attachments = $attachmentsPath ?? $input['attachments'] ?? null;
+
     $insertQuery = "INSERT INTO medical_records (patient_id, doctor_id, appointment_id, record_type, title, description, diagnosis, treatment, medications, attachments, record_date) 
                     VALUES (:patient_id, :doctor_id, :appointment_id, :record_type, :title, :description, :diagnosis, :treatment, :medications, :attachments, :record_date)";
                     
@@ -50,7 +75,7 @@ try {
     $stmt->bindValue(':diagnosis', $input['diagnosis'] ?? null);
     $stmt->bindValue(':treatment', $input['treatment'] ?? null);
     $stmt->bindValue(':medications', $input['medications'] ?? null);
-    $stmt->bindValue(':attachments', $input['attachments'] ?? null);
+    $stmt->bindValue(':attachments', $attachments);
     $stmt->bindValue(':record_date', $input['record_date'] ?? date('Y-m-d'));
     
     if ($stmt->execute()) {

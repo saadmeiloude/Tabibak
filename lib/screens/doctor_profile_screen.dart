@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import '../core/constants/colors.dart';
 import '../widgets/custom_button.dart';
+import '../services/data_service.dart';
+import '../services/api_service.dart';
 
 class DoctorProfileScreen extends StatefulWidget {
   final Map<String, dynamic> doctor;
@@ -44,7 +47,10 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.share_outlined)),
+          IconButton(
+            onPressed: () => _shareDoctor(),
+            icon: const Icon(Icons.share_outlined),
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -130,7 +136,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () => _shareDoctor(),
                     icon: const Icon(Icons.share_outlined),
                     label: const Text('مشاركة الملف'),
                     style: OutlinedButton.styleFrom(
@@ -139,6 +145,12 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 16),
+            CustomButton(
+              text: 'تقييم الطبيب',
+              backgroundColor: Colors.amber.shade700,
+              onPressed: () => _showRatingDialog(),
             ),
             const SizedBox(height: 32),
 
@@ -332,6 +344,93 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _shareDoctor() {
+    final String doctorName = widget.doctor['name'] ?? 'طبيب';
+    final String specialty = widget.doctor['specialty'] ?? '';
+    final String text =
+        'مشاركة ملف الطبيب: $doctorName\nالتخصص: $specialty\nحمل تطبيق طبيبي للمزيد من التفاصيل.';
+    Share.share(text);
+  }
+
+  void _showRatingDialog() {
+    int localRating = 5;
+    final TextEditingController reviewController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('تقييم الطبيب'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      return IconButton(
+                        icon: Icon(
+                          index < localRating ? Icons.star : Icons.star_border,
+                          color: Colors.amber,
+                        ),
+                        onPressed: () {
+                          setDialogState(() {
+                            localRating = index + 1;
+                          });
+                        },
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: reviewController,
+                    decoration: const InputDecoration(
+                      hintText: 'اكتب رأيك هنا...',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('إلغاء'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final result = await DataService.rateDoctor(
+                      doctorId: widget.doctor['user_id'] ?? widget.doctor['id'],
+                      rating: localRating,
+                      reviewText: reviewController.text,
+                    );
+                    if (mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            result['success']
+                                ? 'تم التقييم بنجاح'
+                                : 'فشل التقييم: ${result['message']}',
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                  ),
+                  child: const Text('إرسال'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

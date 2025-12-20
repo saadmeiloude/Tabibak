@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import '../core/constants/colors.dart';
 import '../widgets/custom_button.dart';
+import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/data_service.dart';
 import 'package:provider/provider.dart';
@@ -105,7 +107,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         radius: 50,
                         backgroundColor: Colors.amber.shade100,
                         backgroundImage: _profileImagePath != null
-                            ? FileImage(File(_profileImagePath!))
+                            ? (_profileImagePath!.startsWith('http') ||
+                                      _profileImagePath!.startsWith('uploads/')
+                                  ? NetworkImage(
+                                          _profileImagePath!.startsWith('http')
+                                              ? _profileImagePath!
+                                              : '${ApiService.baseUrl}/$_profileImagePath',
+                                        )
+                                        as ImageProvider
+                                  : FileImage(File(_profileImagePath!)))
                             : null,
                         child: _profileImagePath == null
                             ? Icon(
@@ -453,26 +463,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                setState(() {
-                  _userName = _nameController.text;
-                  _userEmail = _emailController.text;
-                  _userPhone = _phoneController.text;
-                });
+                final newName = _nameController.text;
+                final newEmail = _emailController.text;
+                final newPhone = _phoneController.text;
 
-                await DataService.saveUserProfile(
-                  name: _userName,
-                  email: _userEmail,
-                  phone: _userPhone,
+                final result = await DataService.saveUserProfile(
+                  name: newName,
+                  email: newEmail,
+                  phone: newPhone,
                 );
 
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      loc?.saveChangesSuccess ?? 'تم حفظ التغييرات',
-                    ),
-                  ),
-                );
+                if (mounted) {
+                  if (result['success']) {
+                    setState(() {
+                      _userName = newName;
+                      _userEmail = newEmail;
+                      _userPhone = newPhone;
+                    });
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          loc?.saveChangesSuccess ?? 'تم حفظ التغييرات بنجاح',
+                        ),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(result['message'] ?? 'فشل حفظ التغييرات'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
@@ -508,7 +533,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 title: Text(loc?.takePhoto ?? 'التقاط صورة'),
                 onTap: () async {
                   Navigator.pop(context);
-                  await _pickImage(ImageSource.camera);
+                  await _pickProfileImage(ImageSource.camera);
                 },
               ),
               ListTile(
@@ -516,7 +541,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 title: Text(loc?.pickFromGallery ?? 'اختيار من المعرض'),
                 onTap: () async {
                   Navigator.pop(context);
-                  await _pickImage(ImageSource.gallery);
+                  await _pickProfileImage(ImageSource.gallery);
                 },
               ),
             ],
@@ -526,7 +551,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Future<void> _pickImage(ImageSource source) async {
+  Future<void> _pickProfileImage(ImageSource source) async {
     try {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(
@@ -535,18 +560,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
 
       if (image != null) {
+        // Show loading or optimistic update
         setState(() {
-          _profileImagePath = image.path;
+          // On web, we can't easily use FileImage, so we wait for the server path
+          // or use a temporary blob URL.
+          if (!kIsWeb) {
+            _profileImagePath = image.path;
+          }
         });
-        await DataService.saveProfileImage(image.path);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم تحديث صورة الملف الشخصي')),
-        );
+
+        Map<String, dynamic> result;
+        if (kIsWeb) {
+          final bytes = await image.readAsBytes();
+          result = await DataService.saveProfileImage(
+            null,
+            bytes: bytes,
+            fileName: image.name,
+          );
+        } else {
+          result = await DataService.saveProfileImage(image.path);
+        }
+
+        if (result['success'] == true) {
+          final newPath = result['data']['profile_image'];
+
+          // Update local user in AuthService so it persists
+          final currentUser = await AuthService.getCurrentUser();
+          if (currentUser != null) {
+            final updatedUser = User(
+              id: currentUser.id,
+              fullName: currentUser.fullName,
+              email: currentUser.email,
+              phone: currentUser.phone,
+              userType: currentUser.userType,
+              verificationMethod: currentUser.verificationMethod,
+              isVerified: currentUser.isVerified,
+              createdAt: currentUser.createdAt,
+              profileImage: newPath, // Update the path
+              dateOfBirth: currentUser.dateOfBirth,
+              gender: currentUser.gender,
+              address: currentUser.address,
+              emergencyContact: currentUser.emergencyContact,
+            );
+            await AuthService.storeUser(updatedUser);
+          }
+
+          if (mounted) {
+            setState(() {
+              _profileImagePath = newPath;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('تم تحديث صورة الملف الشخصي بنجاح'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result['message'] ?? 'فشل تحديث الصورة'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${AppLocalizations.of(context)?.error}: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${AppLocalizations.of(context)?.error}: $e')),
+        );
+      }
     }
   }
 
@@ -581,7 +667,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 title: Text(loc?.takePhoto ?? 'التقاط صورة'),
                 onTap: () async {
                   Navigator.pop(context);
-                  await _pickImage(ImageSource.camera);
+                  await _pickReportImage(ImageSource.camera);
                 },
               ),
             ],
@@ -599,30 +685,105 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
 
       if (result != null) {
-        File file = File(result.files.single.path!);
-        await DataService.saveMedicalRecord(
-          result.files.single.name,
-          file.path,
-        );
+        final platformFile = result.files.single;
+        Map<String, dynamic> apiResult;
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${AppLocalizations.of(context)?.fileUploaded}: ${result.files.single.name}',
-            ),
-          ),
-        );
+        if (kIsWeb) {
+          apiResult = await DataService.saveMedicalRecord(
+            platformFile.name,
+            null,
+            bytes: platformFile.bytes,
+          );
+        } else {
+          apiResult = await DataService.saveMedicalRecord(
+            platformFile.name,
+            platformFile.path!,
+          );
+        }
+
+        if (mounted) {
+          if (apiResult['success']) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  '${AppLocalizations.of(context)?.fileUploaded}: ${platformFile.name}',
+                ),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(apiResult['message'] ?? 'فشل رفع الملف'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${AppLocalizations.of(context)?.error}: $e')),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${AppLocalizations.of(context)?.error}: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickReportImage(ImageSource source) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: source,
+        imageQuality: 80,
       );
+
+      if (image != null) {
+        Map<String, dynamic> apiResult;
+        if (kIsWeb) {
+          final bytes = await image.readAsBytes();
+          apiResult = await DataService.saveMedicalRecord(
+            image.name,
+            null,
+            bytes: bytes,
+          );
+        } else {
+          apiResult = await DataService.saveMedicalRecord(
+            image.name,
+            image.path,
+          );
+        }
+
+        if (mounted) {
+          if (apiResult['success']) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  '${AppLocalizations.of(context)?.fileUploaded}: ${image.name}',
+                ),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(apiResult['message'] ?? 'فشل رفع الصورة'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${AppLocalizations.of(context)?.error}: $e')),
+        );
+      }
     }
   }
 
   void _showMedicalRecordsHistory() {
-    final records = DataService.getMedicalRecords();
-
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -630,27 +791,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
           title: const Text('السجلات الطبية'),
           content: SizedBox(
             width: double.maxFinite,
-            child: records.isEmpty
-                ? const Text('لا توجد سجلات طبية')
-                : ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: records.length,
-                    itemBuilder: (context, index) {
-                      final record = records[index];
-                      return ListTile(
-                        leading: const Icon(Icons.description),
-                        title: Text(record['name']),
-                        subtitle: Text(record['date']),
-                        onTap: () {
-                          // In a real app, you'd open the file
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('فتح: ${record["name"]}')),
-                          );
-                        },
-                      );
-                    },
-                  ),
+            child: FutureBuilder<List<MedicalRecord>>(
+              future: DataService.getMedicalRecords(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.hasError) {
+                  return Text('خطأ: ${snapshot.error}');
+                }
+
+                final records = snapshot.data ?? [];
+
+                if (records.isEmpty) {
+                  return const Text('لا توجد سجلات طبية');
+                }
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: records.length,
+                  itemBuilder: (context, index) {
+                    final record = records[index];
+                    return ListTile(
+                      leading: const Icon(Icons.description),
+                      title: Text(record.title),
+                      subtitle: Text(
+                        record.recordDate.toIso8601String().split('T')[0],
+                      ),
+                      onTap: () {
+                        // In a real app, you'd open the file
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('فتح: ${record.title}')),
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
           ),
           actions: [
             TextButton(

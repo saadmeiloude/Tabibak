@@ -4,6 +4,7 @@ import '../../services/data_service.dart';
 import '../../services/auth_service.dart';
 
 import '../../widgets/custom_text_field.dart';
+import '../../widgets/doctor_bottom_nav.dart';
 
 class PatientFileScreen extends StatefulWidget {
   final Map<String, dynamic> patient;
@@ -383,6 +384,15 @@ class _PatientFileScreenState extends State<PatientFileScreen>
         onPressed: _showAddSheet,
         heroTag: "patient_file_fab",
         child: const Icon(Icons.add),
+      ),
+      bottomNavigationBar: DoctorBottomNav(
+        currentIndex: 2, // Customers/Patients index
+        onTap: (index) {
+          if (index == 2) return; // Already on patients related screen
+          Navigator.pop(context); // Go back to layout
+          // The layout will still be on the same index, so we might need to notify it
+          // but usually pop is enough if it was pushed from the Patients tab.
+        },
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'api_service.dart';
 
 // Helper function to safely parse double values
@@ -560,6 +561,30 @@ class DataService {
     }
   }
 
+  static Future<Map<String, dynamic>> rateDoctor({
+    required int doctorId,
+    required int rating,
+    String? reviewText,
+    int? appointmentId,
+  }) async {
+    try {
+      final response = await ApiService.request(
+        endpoint: 'api/doctors/rate.php',
+        method: 'POST',
+        data: {
+          'doctor_id': doctorId,
+          'rating': rating,
+          'review_text': reviewText,
+          'appointment_id': appointmentId,
+        },
+        requiresAuth: true,
+      );
+      return ApiService.handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
   // Medical Record Services
   static Future<Map<String, dynamic>> getPatientRecords({
     int? patientId,
@@ -747,31 +772,79 @@ class DataService {
     await Future.delayed(const Duration(milliseconds: 500));
   }
 
-  static Future<void> saveUserProfile({
+  static Future<Map<String, dynamic>> saveUserProfile({
     required String name,
     required String email,
     required String phone,
   }) async {
-    // TODO: Implement API call
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final response = await ApiService.request(
+        endpoint: 'api/auth/update_profile.php',
+        method: 'POST',
+        data: {'name': name, 'email': email, 'phone': phone},
+        requiresAuth: true,
+      );
+      return ApiService.handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
   }
 
-  static Future<void> saveProfileImage(String imagePath) async {
-    // TODO: Implement API call
-    await Future.delayed(const Duration(seconds: 1));
+  static Future<Map<String, dynamic>> saveProfileImage(
+    String? imagePath, {
+    Uint8List? bytes,
+    String? fileName,
+  }) async {
+    try {
+      final response = await ApiService.uploadFile(
+        endpoint: 'api/auth/update_profile_image.php',
+        filePath: imagePath,
+        bytes: bytes,
+        fileName: fileName,
+        fileField: 'image',
+      );
+      return ApiService.handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
   }
 
-  static Future<void> saveMedicalRecord(String name, String filePath) async {
-    // TODO: Implement API call
-    await Future.delayed(const Duration(seconds: 1));
+  static Future<Map<String, dynamic>> saveMedicalRecord(
+    String title,
+    String? filePath, {
+    Uint8List? bytes,
+    String recordType = 'test_result',
+    int? doctorId,
+  }) async {
+    try {
+      final response = await ApiService.uploadFile(
+        endpoint: 'api/medical-records/create.php',
+        filePath: filePath,
+        bytes: bytes,
+        fileName: title,
+        fileField: 'file',
+        fields: {
+          'title': title,
+          'record_type': recordType,
+          if (doctorId != null) 'doctor_id': doctorId.toString(),
+        },
+      );
+      return ApiService.handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
   }
 
-  static List<Map<String, dynamic>> getMedicalRecords() {
-    // Mock data
-    return [
-      {'name': 'تحليل دم شامل', 'date': '2023-10-15', 'file': 'blood_test.pdf'},
-      {'name': 'أشعة سينية للصدر', 'date': '2023-09-20', 'file': 'xray.jpg'},
-    ];
+  static Future<List<MedicalRecord>> getMedicalRecords() async {
+    try {
+      final result = await getPatientRecords();
+      if (result['success']) {
+        return result['records'] as List<MedicalRecord>;
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
   }
 
   // Research Services

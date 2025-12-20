@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../core/constants/colors.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../services/api_service.dart';
 import '../../services/data_service.dart';
 import '../../services/auth_service.dart';
 import '../../core/localization/app_localizations.dart';
@@ -170,25 +173,98 @@ class _DoctorSettingsScreenState extends State<DoctorSettingsScreen> {
                   CircleAvatar(
                     radius: 50,
                     backgroundColor: Colors.grey.shade200,
-                    child: const Icon(
-                      Icons.person,
-                      size: 50,
-                      color: Colors.grey,
-                    ),
+                    backgroundImage: _doctorData?['profile_image'] != null
+                        ? NetworkImage(
+                            '${ApiService.baseUrl}/${_doctorData!['profile_image']}',
+                          )
+                        : null,
+                    child: _doctorData?['profile_image'] == null
+                        ? const Icon(Icons.person, size: 50, color: Colors.grey)
+                        : null,
                   ),
                   Positioned(
                     bottom: 0,
                     right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.camera_alt,
-                        color: Colors.white,
-                        size: 20,
+                    child: InkWell(
+                      onTap: () async {
+                        final ImagePicker picker = ImagePicker();
+                        final XFile? image = await picker.pickImage(
+                          source: ImageSource.gallery,
+                        );
+
+                        if (image != null) {
+                          Map<String, dynamic> result;
+                          if (kIsWeb) {
+                            final bytes = await image.readAsBytes();
+                            result = await DataService.saveProfileImage(
+                              null,
+                              bytes: bytes,
+                              fileName: image.name,
+                            );
+                          } else {
+                            result = await DataService.saveProfileImage(
+                              image.path,
+                            );
+                          }
+
+                          if (result['success']) {
+                            // Update local user in AuthService so it persists
+                            final currentUser =
+                                await AuthService.getCurrentUser();
+                            if (currentUser != null) {
+                              final updatedUser = User(
+                                id: currentUser.id,
+                                fullName: currentUser.fullName,
+                                email: currentUser.email,
+                                phone: currentUser.phone,
+                                userType: currentUser.userType,
+                                verificationMethod:
+                                    currentUser.verificationMethod,
+                                isVerified: currentUser.isVerified,
+                                createdAt: currentUser.createdAt,
+                                profileImage: result['data']['profile_image'],
+                                dateOfBirth: currentUser.dateOfBirth,
+                                gender: currentUser.gender,
+                                address: currentUser.address,
+                                emergencyContact: currentUser.emergencyContact,
+                              );
+                              await AuthService.storeUser(updatedUser);
+                            }
+
+                            await _loadProfile(); // Refresh profile to show new image
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('تم تحديث الصورة بنجاح'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          } else {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    result['message'] ?? 'فشل تحديث الصورة',
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
                     ),
                   ),

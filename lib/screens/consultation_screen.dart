@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
@@ -347,7 +348,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                   ),
                   const SizedBox(width: 12),
                   // Display selected images
-                  ..._selectedImages.take(2).map((image) {
+                  ..._selectedImages.map((image) {
                     return Container(
                       width: 80,
                       height: 80,
@@ -355,7 +356,9 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         image: DecorationImage(
-                          image: FileImage(File(image.path)),
+                          image: kIsWeb
+                              ? NetworkImage(image.path)
+                              : FileImage(File(image.path)) as ImageProvider,
                           fit: BoxFit.cover,
                         ),
                       ),
@@ -387,20 +390,62 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                       ),
                     );
                   }),
-                  if (_selectedImages.isEmpty) ...[
-                    Container(
+                  ..._selectedFiles.map((file) {
+                    return Container(
                       width: 80,
                       height: 80,
+                      margin: const EdgeInsets.only(right: 8),
                       decoration: BoxDecoration(
-                        color: AppColors.white,
-                        border: Border.all(color: Colors.grey.shade300),
+                        color: Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blue.shade200),
                       ),
-                      child: const Center(
-                        child: Icon(Icons.description, color: Colors.grey),
+                      child: Stack(
+                        children: [
+                          Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.insert_drive_file,
+                                  color: Colors.blue,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  file.path.split('/').last,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 8),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _selectedFiles.remove(file);
+                                });
+                              },
+                              child: Container(
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.close,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                    );
+                  }),
                 ],
               ),
               const SizedBox(height: 24),

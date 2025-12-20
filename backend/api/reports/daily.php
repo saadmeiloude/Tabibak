@@ -35,7 +35,7 @@ try {
     echo json_encode([
         'success' => true,
         'data' => [
-            'today_stats' => $todayStats,
+            'today_stats' => (object)$todayStats,
             'total_patients' => $totalPatients,
             'revenue_today' => $revenueToday
         ]

@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
@@ -90,6 +92,55 @@ class ApiService {
     }
   }
 
+  // Upload file method
+  static Future<http.Response> uploadFile({
+    required String endpoint,
+    String? filePath,
+    Uint8List? bytes,
+    String? fileName,
+    String fileField = 'file',
+    Map<String, String>? fields,
+    bool requiresAuth = true,
+  }) async {
+    final uri = Uri.parse('$baseUrl/$endpoint');
+    final request = http.MultipartRequest('POST', uri);
+
+    // Add authorization header if required
+    if (requiresAuth) {
+      final token = await getToken();
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+    }
+
+    // Add fields if any
+    if (fields != null) {
+      request.fields.addAll(fields);
+    }
+
+    // Add file
+    if (bytes != null && fileName != null) {
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          fileField,
+          bytes,
+          filename: fileName,
+          contentType: _getMediaType(fileName),
+        ),
+      );
+    } else if (filePath != null) {
+      // Note: fromPath is not supported on Web
+      request.files.add(await http.MultipartFile.fromPath(fileField, filePath));
+    }
+
+    try {
+      final streamedResponse = await request.send();
+      return await http.Response.fromStream(streamedResponse);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   // Handle API response
   static Map<String, dynamic> handleResponse(http.Response response) {
     final data = json.decode(response.body) as Map<String, dynamic>;
@@ -111,5 +162,22 @@ class ApiService {
   static void updateBaseUrl(String newUrl) {
     // This method can be called to update the base URL dynamically
     // if needed for different environments
+  }
+
+  static MediaType? _getMediaType(String fileName) {
+    final extension = fileName.split('.').last.toLowerCase();
+    switch (extension) {
+      case 'jpg':
+      case 'jpeg':
+        return MediaType('image', 'jpeg');
+      case 'png':
+        return MediaType('image', 'png');
+      case 'gif':
+        return MediaType('image', 'gif');
+      case 'pdf':
+        return MediaType('application', 'pdf');
+      default:
+        return MediaType('application', 'octet-stream');
+    }
   }
 }

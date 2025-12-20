@@ -30,7 +30,8 @@ try {
     
     echo json_encode([
         'success' => true,
-        'message' => 'Logout successful'
+        // 'message' => 'Logout successful'
+        'message' => 'و خيرت حتت تفضل'
     ]);
     
 } catch (Exception $e) {
