@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../config/database.php';
 
-function authenticate() {
+function authenticate($requiredType = null) {
     $headers = getallheaders();
     $authHeader = isset($headers['Authorization']) ? $headers['Authorization'] : '';
     
@@ -21,7 +21,7 @@ function authenticate() {
         $db = Database::getInstance();
         $conn = $db->getConnection();
         
-        // First get session to know user_type
+        // First get session to know user_userId and user_type
         $sessionQuery = "SELECT user_id, user_type FROM user_sessions WHERE token = :token AND expires_at > NOW()";
         $sessionStmt = $conn->prepare($sessionQuery);
         $sessionStmt->bindParam(':token', $token);
@@ -36,6 +36,13 @@ function authenticate() {
 
         $userId = $session['user_id'];
         $userType = $session['user_type'];
+
+        // Enforce role check if requiredType is specified
+        if ($requiredType !== null && $userType !== $requiredType) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Unauthorized access for this account type']);
+            exit;
+        }
 
         // Now fetch user from appropriate table
         if ($userType === 'doctor') {
@@ -60,7 +67,7 @@ function authenticate() {
         
     } catch (Exception $e) {
         http_response_code(500);
-        echo json_encode(['error oh chit fuck you' => 'Authentication error']);
+        echo json_encode(['error' => 'Authentication error']);
         exit;
     }
 }

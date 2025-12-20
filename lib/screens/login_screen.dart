@@ -70,20 +70,34 @@ class _LoginScreenState extends State<LoginScreen> {
         });
 
         if (result['success']) {
-          // Navigate to home screen
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const MainLayout()),
-            (route) => false,
-          );
+          final user = result['user'];
+          if (user.userType == 'patient') {
+            // Navigate to home screen
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const MainLayout()),
+              (route) => false,
+            );
 
-          // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message']),
-              backgroundColor: Colors.green,
-            ),
-          );
+            // Show success message
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result['message']),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } else {
+            // It's a doctor trying to login as patient
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'هذا الحساب مخصص للأطباء، يرجى تسجيل الدخول من بوابة الأطباء',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+            AuthService.logout();
+          }
         } else {
           // Show error message
           ScaffoldMessenger.of(context).showSnackBar(
@@ -113,6 +127,14 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            size: 20,
+            color: AppColors.textPrimary,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Text(AppLocalizations.of(context)?.login ?? 'تسجيل الدخول'),
         centerTitle: true,
         backgroundColor: Colors.transparent,

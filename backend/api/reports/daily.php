@@ -2,9 +2,10 @@
 header('Content-Type: application/json');
 require_once '../../config/database.php';
 
-$method = $_SERVER['REQUEST_METHOD'];
+require_once '../auth/middleware.php';
 
-// Get token (Auth check usually here)
+$user = authenticate('doctor');
+$doctorId = $user['id'];
 
 try {
     $db = Database::getInstance();

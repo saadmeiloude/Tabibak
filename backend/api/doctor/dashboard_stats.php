@@ -2,48 +2,14 @@
 header('Content-Type: application/json');
 require_once '../../config/database.php';
 
-$input = json_decode(file_get_contents('php://input'), true);
-$token = null;
+require_once '../auth/middleware.php';
 
-// Get token from header
-$headers = getallheaders();
-if (isset($headers['Authorization'])) {
-    $matches = [];
-    if (preg_match('/Bearer\s(\S+)/', $headers['Authorization'], $matches)) {
-        $token = $matches[1];
-    }
-}
-
-if (!$token && isset($input['token'])) {
-    $token = $input['token'];
-}
-
-if (!$token) {
-    http_response_code(401);
-    echo json_encode(['error' => 'No token provided']);
-    exit;
-}
+$user = authenticate('doctor');
+$doctorId = $user['id'];
 
 try {
     $db = Database::getInstance();
     $conn = $db->getConnection();
-    
-    // Verify token and get user
-    $query = "SELECT u.id, u.full_name, u.user_type FROM users u 
-              JOIN user_sessions s ON u.id = s.user_id 
-              WHERE s.token = :token AND s.expires_at > NOW()";
-    $stmt = $conn->prepare($query);
-    $stmt->bindParam(':token', $token);
-    $stmt->execute();
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if (!$user || $user['user_type'] !== 'doctor') {
-        http_response_code(401);
-        echo json_encode(['error' => 'Invalid token or not a doctor']);
-        exit;
-    }
-    
-    $doctorId = $user['id'];
     
     // 1. Get Today's Appointments Count
     $todayQuery = "SELECT COUNT(*) as count FROM appointments 

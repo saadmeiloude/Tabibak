@@ -7,9 +7,32 @@ import 'register_screen.dart';
 import 'home_screen.dart';
 import '../core/localization/app_localizations.dart';
 import '../services/language_service.dart';
+import '../services/auth_service.dart';
 
-class WelcomeScreen extends StatelessWidget {
+class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
+
+  @override
+  State<WelcomeScreen> createState() => _WelcomeScreenState();
+}
+
+class _WelcomeScreenState extends State<WelcomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    final user = await AuthService.getCurrentUser();
+    if (user != null && mounted) {
+      if (user.userType == 'doctor') {
+        Navigator.pushReplacementNamed(context, '/doctor-home');
+      } else if (user.userType == 'patient') {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
