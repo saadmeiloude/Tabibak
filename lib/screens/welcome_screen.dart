@@ -8,6 +8,7 @@ import 'home_screen.dart';
 import '../core/localization/app_localizations.dart';
 import '../services/language_service.dart';
 import '../services/auth_service.dart';
+import '../services/social_auth_service.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -166,23 +167,28 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   // Google Button
                   CustomButton(
                     text: loc?.continueGoogle ?? 'الاستمرار باستخدام Google',
-                    onPressed: () {},
+                    onPressed: () => _handleSocialLogin('google'),
                     isOutlined: true,
                     textColor: AppColors.textPrimary,
-                    icon: const Icon(
-                      Icons.g_mobiledata,
-                      size: 28,
-                    ), // Placeholder for Google Logo
+                    icon: Image.asset(
+                      'assets/icons/google.png',
+                      width: 24,
+                      height: 24,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   // Facebook Button
                   CustomButton(
                     text:
                         loc?.continueFacebook ?? 'الاستمرار باستخدام Facebook',
-                    onPressed: () {},
+                    onPressed: () => _handleSocialLogin('facebook'),
                     isOutlined: true,
                     textColor: AppColors.textPrimary,
-                    icon: const Icon(Icons.facebook, size: 28),
+                    icon: Image.asset(
+                      'assets/icons/facebook.png',
+                      width: 24,
+                      height: 24,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   // Watch Video
@@ -227,4 +233,51 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       ),
     );
   }
+
+  Future<void> _handleSocialLogin(String provider) async {
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      Map<String, dynamic> result;
+
+      if (provider == 'google') {
+        result = await SocialAuthService.signInWithGoogle();
+      } else if (provider == 'facebook') {
+        result = await SocialAuthService.signInWithFacebook();
+      } else {
+        result = {'success': false, 'message': 'منصة غير مدعومة'};
+      }
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+        if (result['success']) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message']),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pushReplacementNamed(context, '/home');
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message']),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('خطأ: $e')));
+      }
+    }
+  }
+
+  bool _isLoading = false;
 }

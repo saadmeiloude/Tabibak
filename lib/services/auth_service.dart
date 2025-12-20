@@ -100,6 +100,38 @@ class AuthService {
     await prefs.remove(_userKey);
   }
 
+  // Login user with social provider
+  static Future<Map<String, dynamic>> loginWithSocial(
+    String provider,
+    String email,
+    String fullName,
+  ) async {
+    try {
+      final response = await ApiService.request(
+        endpoint: 'api/auth/social_login.php',
+        method: 'POST',
+        data: {'provider': provider, 'email': email, 'full_name': fullName},
+      );
+
+      final result = ApiService.handleResponse(response);
+
+      if (result['success']) {
+        await ApiService.storeToken(result['data']['token']);
+        final user = User.fromJson(result['data']['user']);
+        await storeUser(user);
+
+        return {'success': true, 'user': user, 'message': result['message']};
+      } else {
+        return {
+          'success': false,
+          'message': result['error'] ?? 'Social login failed',
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
   // Login user
   static Future<Map<String, dynamic>> login(
     String email,
