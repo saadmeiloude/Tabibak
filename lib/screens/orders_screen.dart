@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
 import '../core/constants/mauritanian_constants.dart';
+import '../services/data_service.dart';
+import '../services/auth_service.dart';
+import 'package:intl/intl.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -12,9 +15,11 @@ class OrdersScreen extends StatefulWidget {
 class _OrdersScreenState extends State<OrdersScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  List<Map<String, dynamic>> _activeOrders = [];
-  List<Map<String, dynamic>> _completedOrders = [];
-  List<Map<String, dynamic>> _cancelledOrders = [];
+  List<Appointment> _activeOrders = [];
+  List<Appointment> _completedOrders = [];
+  List<Appointment> _cancelledOrders = [];
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -23,69 +28,44 @@ class _OrdersScreenState extends State<OrdersScreen>
     _loadOrders();
   }
 
-  void _loadOrders() {
-    // Mock data for demonstration
-    _activeOrders = [
-      {
-        'id': 'ORD-001',
-        'type': 'استشارة',
-        'doctorName': 'د. سارة أحمد',
-        'specialty': 'طبيبة عامة',
-        'date': '2024-12-10',
-        'time': '14:00',
-        'status': 'confirmed',
-        'amount': 150,
-      },
-      {
-        'id': 'ORD-002',
-        'type': 'موعد عيادة',
-        'doctorName': 'د. أحمد علي',
-        'specialty': 'طب أسرة',
-        'date': '2024-12-11',
-        'time': '10:30',
-        'status': 'pending',
-        'amount': 200,
-      },
-    ];
+  Future<void> _loadOrders() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
 
-    _completedOrders = [
-      {
-        'id': 'ORD-003',
-        'type': 'استشارة',
-        'doctorName': 'د. خالد عمر',
-        'specialty': 'جلدية',
-        'date': '2024-12-08',
-        'time': '16:00',
-        'status': 'completed',
-        'amount': 180,
-        'rating': 5,
-      },
-      {
-        'id': 'ORD-004',
-        'type': 'موعد عيادة',
-        'doctorName': 'د. فاطمة الزهراء',
-        'specialty': 'أطفال',
-        'date': '2024-12-05',
-        'time': '11:00',
-        'status': 'completed',
-        'amount': 220,
-        'rating': 4,
-      },
-    ];
+    try {
+      final user = await AuthService.getCurrentUser();
+      if (user == null) {
+        throw Exception('المستخدم غير مسجل الدخول');
+      }
 
-    _cancelledOrders = [
-      {
-        'id': 'ORD-005',
-        'type': 'استشارة',
-        'doctorName': 'د. محمد العتيبي',
-        'specialty': 'عظام',
-        'date': '2024-12-03',
-        'time': '09:00',
-        'status': 'cancelled',
-        'amount': 250,
-        'cancellationReason': 'تغيير في المواعيد',
-      },
-    ];
+      final result = await DataService.getUserAppointments(userId: user.id);
+
+      if (result['success']) {
+        final List<Appointment> allAppointments = result['appointments'];
+
+        setState(() {
+          _activeOrders = allAppointments
+              .where((a) => a.status == 'pending' || a.status == 'confirmed')
+              .toList();
+          _completedOrders = allAppointments
+              .where((a) => a.status == 'completed')
+              .toList();
+          _cancelledOrders = allAppointments
+              .where((a) => a.status == 'cancelled')
+              .toList();
+          _isLoading = false;
+        });
+      } else {
+        throw Exception(result['message']);
+      }
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -110,21 +90,36 @@ class _OrdersScreenState extends State<OrdersScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildOrdersList(_activeOrders, 'لا توجد طلبات نشطة'),
-          _buildOrdersList(_completedOrders, 'لا توجد طلبات مكتملة'),
-          _buildOrdersList(_cancelledOrders, 'لا توجد طلبات ملغية'),
-        ],
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text(_error!),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _loadOrders,
+                    child: const Text('إعادة المحاولة'),
+                  ),
+                ],
+              ),
+            )
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildOrdersList(_activeOrders, 'لا توجد طلبات نشطة'),
+                _buildOrdersList(_completedOrders, 'لا توجد طلبات مكتملة'),
+                _buildOrdersList(_cancelledOrders, 'لا توجد طلبات ملغية'),
+              ],
+            ),
     );
   }
 
-  Widget _buildOrdersList(
-    List<Map<String, dynamic>> orders,
-    String emptyMessage,
-  ) {
+  Widget _buildOrdersList(List<Appointment> orders, String emptyMessage) {
     if (orders.isEmpty) {
       return Center(
         child: Column(
@@ -145,21 +140,20 @@ class _OrdersScreenState extends State<OrdersScreen>
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: orders.length,
-      itemBuilder: (context, index) {
-        final order = orders[index];
-        return _buildOrderCard(order);
-      },
+    return RefreshIndicator(
+      onRefresh: _loadOrders,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: orders.length,
+        itemBuilder: (context, index) {
+          final order = orders[index];
+          return _buildOrderCard(order);
+        },
+      ),
     );
   }
 
-  Widget _buildOrderCard(Map<String, dynamic> order) {
-    final status = order['status'] as String;
-    final type = order['type'] as String;
-    final amount = order['amount'] as int;
-
+  Widget _buildOrderCard(Appointment order) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -178,7 +172,7 @@ class _OrdersScreenState extends State<OrdersScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                order['id'],
+                'APT-${order.id}',
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.textSecondary,
@@ -188,11 +182,11 @@ class _OrdersScreenState extends State<OrdersScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _getStatusColor(status),
+                  color: _getStatusColor(order.status),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  _getStatusText(status),
+                  _getStatusText(order.status),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 10,
@@ -218,19 +212,24 @@ class _OrdersScreenState extends State<OrdersScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      order['doctorName'],
+                      order.doctorName ?? 'طبيب غير معروف',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
                     ),
+                    // Specialty is not directly in Appointment model unless we updated list.php to join,
+                    // but the model definition in data_service.dart might not have it mapped yet.
+                    // For now we don't display specialty or display a placeholder if needed.
+                    /*
                     Text(
-                      order['specialty'],
+                      'تخصص', 
                       style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 12,
                       ),
                     ),
+                    */
                   ],
                 ),
               ),
@@ -247,13 +246,35 @@ class _OrdersScreenState extends State<OrdersScreen>
             ),
             child: Row(
               children: [
-                Icon(_getTypeIcon(type), size: 16, color: AppColors.primary),
+                Icon(
+                  _getTypeIcon(order.consultationType),
+                  size: 16,
+                  color: AppColors.primary,
+                ),
                 const SizedBox(width: 8),
-                Text(type, style: const TextStyle(fontWeight: FontWeight.bold)),
-                const Spacer(),
                 Text(
-                  '${order['date']} - ${order['time']}',
-                  style: TextStyle(color: AppColors.textSecondary),
+                  _getTypeText(order.consultationType),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      DateFormat('yyyy-MM-dd').format(order.appointmentDate),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                    Text(
+                      DateFormat('HH:mm').format(order.appointmentTime),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -265,7 +286,7 @@ class _OrdersScreenState extends State<OrdersScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'المبلغ: ${MauritanianConstants.formatPrice(amount.toDouble())}',
+                'المبلغ: ${MauritanianConstants.formatPrice(order.feePaid)}',
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: Colors.green,
@@ -273,17 +294,18 @@ class _OrdersScreenState extends State<OrdersScreen>
               ),
               Row(
                 children: [
-                  if (status == 'confirmed' || status == 'pending')
+                  if (order.status == 'confirmed' || order.status == 'pending')
                     TextButton(
                       onPressed: () {
-                        _cancelOrder(order['id']);
+                        _cancelOrder(order.id);
                       },
                       child: const Text(
                         'إلغاء',
                         style: TextStyle(color: Colors.red),
                       ),
                     ),
-                  if (status == 'completed' && order['rating'] == null)
+                  /*
+                  if (order.status == 'completed')
                     TextButton(
                       onPressed: () {
                         _rateOrder(order);
@@ -293,6 +315,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                         style: TextStyle(color: AppColors.primary),
                       ),
                     ),
+                  */
                   TextButton(
                     onPressed: () {
                       _viewOrderDetails(order);
@@ -341,18 +364,29 @@ class _OrdersScreenState extends State<OrdersScreen>
     }
   }
 
-  IconData _getTypeIcon(String type) {
+  String _getTypeText(String type) {
     switch (type) {
-      case 'استشارة':
-        return Icons.chat;
-      case 'موعد عيادة':
-        return Icons.local_hospital;
+      case 'online':
+        return 'استشارة أونلاين';
+      case 'in_person':
+        return 'زيارة عيادة';
       default:
-        return Icons.receipt;
+        return type;
     }
   }
 
-  void _cancelOrder(String orderId) {
+  IconData _getTypeIcon(String type) {
+    switch (type) {
+      case 'online':
+        return Icons.videocam;
+      case 'in_person':
+        return Icons.local_hospital;
+      default:
+        return Icons.event;
+    }
+  }
+
+  void _cancelOrder(int orderId) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -380,118 +414,63 @@ class _OrdersScreenState extends State<OrdersScreen>
     );
   }
 
-  void _performCancelOrder(String orderId) {
-    // Find and move order from active to cancelled
-    final orderIndex = _activeOrders.indexWhere(
-      (order) => order['id'] == orderId,
+  Future<void> _performCancelOrder(int orderId) async {
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
-    if (orderIndex != -1) {
-      final order = _activeOrders[orderIndex];
-      order['status'] = 'cancelled';
-      order['cancellationReason'] = 'ملغي بواسطة المستخدم';
 
-      setState(() {
-        _activeOrders.removeAt(orderIndex);
-        _cancelledOrders.insert(0, order);
-      });
+    try {
+      final result = await DataService.cancelAppointment(orderId);
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تم إلغاء الطلب بنجاح')));
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+
+      if (result['success']) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('تم إلغاء الطلب بنجاح')));
+        _loadOrders(); // Reload list
+      } else {
+        throw Exception(result['message']);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+      );
     }
   }
 
-  void _rateOrder(Map<String, dynamic> order) {
-    double rating = 5.0;
-
+  void _viewOrderDetails(Appointment order) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('تقييم الخدمة'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('كيف كانت تجربتك مع ${order['doctorName']}؟'),
-              const SizedBox(height: 16),
-              StatefulBuilder(
-                builder: (context, setDialogState) {
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(5, (index) {
-                      return IconButton(
-                        icon: Icon(
-                          index < rating ? Icons.star : Icons.star_border,
-                          color: Colors.amber,
-                          size: 32,
-                        ),
-                        onPressed: () {
-                          setDialogState(() {
-                            rating = index + 1;
-                          });
-                        },
-                      );
-                    }),
-                  );
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('إلغاء'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _saveRating(order, rating);
-              },
-              child: const Text('إرسال'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _saveRating(Map<String, dynamic> order, double rating) {
-    setState(() {
-      order['rating'] = rating.toInt();
-    });
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('شكراً لتقييمك: $rating نجوم')));
-  }
-
-  void _viewOrderDetails(Map<String, dynamic> order) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('تفاصيل الطلب ${order['id']}'),
+          title: Text('تفاصيل الطلب APT-${order.id}'),
           content: SizedBox(
             width: double.maxFinite,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('الطبيب: ${order['doctorName']}'),
-                Text('التخصص: ${order['specialty']}'),
-                Text('النوع: ${order['type']}'),
-                Text('التاريخ: ${order['date']}'),
-                Text('الوقت: ${order['time']}'),
+                Text('الطبيب: ${order.doctorName ?? "غير معروف"}'),
+                Text('النوع: ${_getTypeText(order.consultationType)}'),
                 Text(
-                  'المبلغ: ${MauritanianConstants.formatPrice(order['amount'].toDouble())}',
+                  'التاريخ: ${DateFormat('yyyy-MM-dd').format(order.appointmentDate)}',
                 ),
-                Text('الحالة: ${_getStatusText(order['status'])}'),
-                if (order['rating'] != null)
-                  Text('التقييم: ${order['rating']} نجوم'),
-                if (order['cancellationReason'] != null)
-                  Text('سبب الإلغاء: ${order['cancellationReason']}'),
+                Text(
+                  'الوقت: ${DateFormat('HH:mm').format(order.appointmentTime)}',
+                ),
+                Text(
+                  'المبلغ: ${MauritanianConstants.formatPrice(order.feePaid)}',
+                ),
+                Text('الحالة: ${_getStatusText(order.status)}'),
+                if (order.symptoms != null && order.symptoms!.isNotEmpty)
+                  Text('الأعراض: ${order.symptoms}'),
               ],
             ),
           ),
