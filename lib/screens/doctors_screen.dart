@@ -23,7 +23,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   List<Map<String, dynamic>> _doctors = [];
 
   final List<String> _specialties = [
-    'الكل',
+    'Tous',
     'طب عام',
     'أمراض القلب',
     'جلدية',
