@@ -78,6 +78,11 @@ try {
     // Remove sensitive data from response
     unset($user['password']);
     
+    // Add default verification_method for doctors if not present
+    if ($user['user_type'] === 'doctor' && !isset($user['verification_method'])) {
+        $user['verification_method'] = 'email';
+    }
+    
     echo json_encode([
         'success' => true,
         'message' => 'Login successful',

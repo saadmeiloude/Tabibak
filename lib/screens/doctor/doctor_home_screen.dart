@@ -429,13 +429,26 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                         () => Navigator.pushNamed(context, '/patient-list'),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
                     Expanded(
                       child: _buildQuickActionCard(
                         loc?.reportsAction ?? 'التقارير',
                         Icons.analytics,
                         Colors.orange,
                         () => _showReportsDialog(),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildQuickActionCard(
+                        loc?.wallet ?? 'المحفظة',
+                        Icons.account_balance_wallet,
+                        Colors.purple,
+                        () => Navigator.pushNamed(context, '/wallet'),
                       ),
                     ),
                   ],

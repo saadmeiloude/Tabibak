@@ -1813,6 +1813,12 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'صالح حتى'**
   String get valid_thru;
+
+  /// No description provided for @wallet.
+  ///
+  /// In ar, this message translates to:
+  /// **'المحفظة'**
+  String get wallet;
 }
 
 class _AppLocalizationsDelegate

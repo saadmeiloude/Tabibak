@@ -111,6 +111,7 @@ try {
     $userStmt->execute();
     $user = $userStmt->fetch(PDO::FETCH_ASSOC);
     $user['user_type'] = 'doctor'; // Essential for frontend logic
+    $user['verification_method'] = 'email'; // Default verification method for doctors
 
     echo json_encode([
         'success' => true,

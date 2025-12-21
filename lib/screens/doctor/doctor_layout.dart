@@ -4,6 +4,7 @@ import 'doctor_home_screen.dart';
 import 'appointment_management_screen.dart';
 import 'patient_list_screen.dart';
 import 'doctor_settings_screen.dart'; // Import Settings Screen
+import '../wallet_screen.dart'; // Import Wallet Screen
 import '../../core/localization/app_localizations.dart';
 
 class DoctorLayout extends StatefulWidget {
@@ -20,6 +21,7 @@ class _DoctorLayoutState extends State<DoctorLayout> {
     const DoctorHomeScreen(),
     const AppointmentManagementScreen(), // Calendar/Appointments
     const PatientListScreen(), // Patients List
+    const WalletScreen(), // Wallet/Payments
     const DoctorSettingsScreen(), // Profile/Settings
   ];
 
@@ -46,6 +48,10 @@ class _DoctorLayoutState extends State<DoctorLayout> {
           BottomNavigationBarItem(
             icon: Icon(Icons.people),
             label: AppLocalizations.of(context)?.patientsTitle ?? 'المرضى',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.account_balance_wallet),
+            label: AppLocalizations.of(context)?.wallet ?? 'المحفظة',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),

@@ -321,6 +321,28 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildQuickActionCard(
+                          context,
+                          AppLocalizations.of(context)?.wallet ?? 'المحفظة',
+                          Icons.account_balance_wallet,
+                          () => Navigator.pushNamed(context, '/wallet'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildQuickActionCard(
+                          context,
+                          AppLocalizations.of(context)?.myOrders ?? 'طلباتي',
+                          Icons.shopping_bag,
+                          () => Navigator.pushNamed(context, '/orders'),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 24),
 
                   // Daily Health Tips

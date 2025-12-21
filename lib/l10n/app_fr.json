@@ -285,5 +285,6 @@
     "no_cards_found": "Aucune carte enregistrée",
     "add_card_hint": "Ajoutez une carte de paiement pour vos réservations",
     "card_holder_short": "Titulaire",
-    "valid_thru": "Valide jusqu'à"
+    "valid_thru": "Valide jusqu'à",
+    "wallet": "Portefeuille"
 }

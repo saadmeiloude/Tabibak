@@ -28,6 +28,7 @@ import 'screens/profile_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/cards_screen.dart';
 import 'screens/orders_screen.dart';
+import 'screens/wallet_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -117,6 +118,7 @@ class MyApp extends StatelessWidget {
             '/notifications': (context) => const NotificationsScreen(),
             '/cards': (context) => const CardsScreen(),
             '/orders': (context) => const OrdersScreen(),
+            '/wallet': (context) => const WalletScreen(),
             '/doctor-register': (context) => const DoctorRegisterScreen(),
           },
         );

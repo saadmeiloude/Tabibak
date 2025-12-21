@@ -11,6 +11,7 @@ import '../services/data_service.dart';
 import 'package:provider/provider.dart';
 import '../services/language_service.dart';
 import '../core/localization/app_localizations.dart';
+import 'wallet_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -285,6 +286,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Icons.shopping_bag_outlined,
                     appLocalizations?.myOrders ?? 'طلباتي',
                     () => _showMyOrders(),
+                  ),
+                  const Divider(height: 1),
+                  _buildListTile(
+                    context,
+                    Icons.account_balance_wallet,
+                    'المحفظة والرصيد',
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const WalletScreen(),
+                      ),
+                    ),
                   ),
                   const Divider(height: 1),
                   SwitchListTile(

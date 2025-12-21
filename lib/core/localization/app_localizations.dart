@@ -369,6 +369,7 @@ class AppLocalizations {
   String get addCardHint => translate('add_card_hint');
   String get cardHolderShort => translate('card_holder_short');
   String get validThru => translate('valid_thru');
+  String get wallet => translate('wallet');
 }
 
 class _AppLocalizationsDelegate
