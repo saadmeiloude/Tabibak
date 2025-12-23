@@ -91,6 +91,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
           _recentPatients = (data['recent_patients'] as List)
               .map(
                 (item) => {
+                  'id': item['id'],
                   'name': item['name'],
                   'lastVisit': item['last_visit'] ?? 'N/A',
                   'isNew': false, // Logic handled in query if needed
@@ -545,6 +546,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                           _recentPatients[index]['name'],
                           '${loc?.lastVisitLabel ?? 'آخر زيارة'}: ${_recentPatients[index]['lastVisit']}',
                           isNew: _recentPatients[index]['isNew'] ?? false,
+                          id: _recentPatients[index]['id'],
                         ),
                         if (index < _recentPatients.length.clamp(0, 3) - 1)
                           const SizedBox(height: 12),
@@ -703,6 +705,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
     String name,
     String subtitle, {
     bool isNew = false,
+    dynamic id,
   }) {
     var loc = AppLocalizations.of(context);
     // ... (Keep existing implementation)
@@ -727,7 +730,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
             Navigator.pushNamed(
               context,
               '/patient-file',
-              arguments: {'name': name},
+              arguments: {'name': name, 'id': id},
             );
           },
           child: Text(loc?.viewFileAction ?? 'عرض الملف'),

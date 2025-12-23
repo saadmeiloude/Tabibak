@@ -193,3 +193,69 @@
 2025-12-23 11:04:38 - RESOLVED Doctor ID from 24 to 10
 2025-12-23 11:04:39 - Success! ID: 38
 ---
+2025-12-23 21:24:08 - Input: Array
+(
+    [doctor_id] => 35
+    [appointment_date] => 2025-12-25
+    [appointment_time] => 11:00:00
+    [symptoms] => Booking via Calendar
+    [consultation_type] => online
+    [duration_minutes] => 30
+)
+
+2025-12-23 21:24:08 - User: Array
+(
+    [id] => 33
+    [email] => 23060@supnum.mr
+    [phone] => 22347868
+    [password] => $2y$10$6JQ7diBUIYBiPggQx7swVexNo2cEopQz885EthhVfb5XEFeIZGK32
+    [full_name] => Abad
+    [user_type] => patient
+    [profile_image] => 
+    [date_of_birth] => 
+    [gender] => male
+    [address] => 
+    [emergency_contact] => 
+    [verification_method] => sms
+    [is_verified] => 1
+    [is_active] => 1
+    [created_at] => 2025-12-23 20:59:59
+    [updated_at] => 2025-12-23 20:59:59
+)
+
+2025-12-23 21:24:08 - RESOLVED Doctor ID from 35 to 14
+2025-12-23 21:24:08 - Success! ID: 39
+---
+2025-12-23 21:39:18 - Input: Array
+(
+    [doctor_id] => 24
+    [appointment_date] => 2025-12-30
+    [appointment_time] => 18:00:00
+    [symptoms] => Booking via Calendar
+    [consultation_type] => online
+    [duration_minutes] => 30
+)
+
+2025-12-23 21:39:18 - User: Array
+(
+    [id] => 33
+    [email] => 23060@supnum.mr
+    [phone] => 22347868
+    [password] => $2y$10$6JQ7diBUIYBiPggQx7swVexNo2cEopQz885EthhVfb5XEFeIZGK32
+    [full_name] => Abad
+    [user_type] => patient
+    [profile_image] => 
+    [date_of_birth] => 
+    [gender] => male
+    [address] => 
+    [emergency_contact] => 
+    [verification_method] => sms
+    [is_verified] => 1
+    [is_active] => 1
+    [created_at] => 2025-12-23 20:59:59
+    [updated_at] => 2025-12-23 20:59:59
+)
+
+2025-12-23 21:39:18 - RESOLVED Doctor ID from 24 to 10
+2025-12-23 21:39:18 - Success! ID: 40
+---

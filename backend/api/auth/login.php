@@ -71,10 +71,17 @@ try {
     $token = bin2hex(random_bytes(16)); // 32 character hex string to fit VARCHAR(100)
     $expiresAt = date('Y-m-d H:i:s', strtotime('+30 days'));
     
+    // Determine correct user_id for session
+    // If user is doctor, we need the global user_id from users table, not the doctor table primary key
+    $sessionUserId = $user['id'];
+    if (isset($user['user_type']) && $user['user_type'] === 'doctor' && isset($user['user_id'])) {
+        $sessionUserId = $user['user_id'];
+    }
+
     // Store session in database
     $insertQuery = "INSERT INTO user_sessions (user_id, token, user_type, expires_at) VALUES (:user_id, :token, :user_type, :expires_at)";
     $insertStmt = $conn->prepare($insertQuery);
-    $insertStmt->bindParam(':user_id', $user['id']);
+    $insertStmt->bindParam(':user_id', $sessionUserId);
     $insertStmt->bindParam(':token', $token);
     $insertStmt->bindParam(':user_type', $user['user_type']);
     $insertStmt->bindParam(':expires_at', $expiresAt);
