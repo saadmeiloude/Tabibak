@@ -11,6 +11,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 try {
     $db = Database::getInstance();
     $conn = $db->getConnection();
+
+    // DEBUG DOCTORS LIST
+    $logMsg = "All Doctors in DB:\n";
+    $allDocs = $conn->query("SELECT id, user_id, full_name FROM doctors")->fetchAll(PDO::FETCH_ASSOC);
+    $logMsg .= print_r($allDocs, true);
+    file_put_contents('debug_doctors_list.txt', $logMsg);
     
     $specialization = isset($_GET['specialization']) ? $_GET['specialization'] : null;
     

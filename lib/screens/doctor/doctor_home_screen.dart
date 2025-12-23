@@ -277,7 +277,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                     Expanded(
                       child: _buildStatCard(
                         context,
-                        title: loc?.todayAppointments ?? 'مواعيد اليوم',
+                        title: loc?.todayAppointments ?? 'طلبات معلقة',
                         value: _todayAppointments.toString(),
                         icon: Icons.calendar_today,
                         color: Colors.blue,

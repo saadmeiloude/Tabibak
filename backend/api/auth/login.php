@@ -32,17 +32,22 @@ try {
     $db = Database::getInstance();
     $conn = $db->getConnection();
     
-    // Check for user in users table (patients)
-    $query = "SELECT *, 'patient' as user_type FROM users WHERE (email = :email OR phone = :phone) AND is_active = 1";
+    // Check doctors table first
+    $query = "SELECT *, 'doctor' as user_type FROM doctors WHERE (email = :email OR phone = :phone) AND is_active = 1";
     $stmt = $conn->prepare($query);
     $stmt->bindParam(':email', $identifier);
     $stmt->bindParam(':phone', $identifier);
     $stmt->execute();
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    // If not found in users, check doctors table
-    if (!$user) {
-        $query = "SELECT *, 'doctor' as user_type FROM doctors WHERE (email = :email OR phone = :phone) AND is_active = 1";
+    $doctorUser = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $user = null;
+
+    // If found in doctors and password matches, use doctor account
+    if ($doctorUser && password_verify($password, $doctorUser['password'])) {
+        $user = $doctorUser;
+    } else {
+        // If not a doctor specific login, check generic users table
+        $query = "SELECT * FROM users WHERE (email = :email OR phone = :phone) AND is_active = 1";
         $stmt = $conn->prepare($query);
         $stmt->bindParam(':email', $identifier);
         $stmt->bindParam(':phone', $identifier);

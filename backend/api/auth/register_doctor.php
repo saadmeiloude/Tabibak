@@ -82,11 +82,28 @@ try {
     $consultationFee = isset($input['consultation_fee']) ? floatval($input['consultation_fee']) : 0.0;
     $experienceYears = isset($input['experience_years']) ? intval($input['experience_years']) : 0;
 
-    // Insert directly into doctors table
-    $insertDoctor = "INSERT INTO doctors (full_name, email, phone, password, license_number, specialization, experience_years, consultation_fee, is_verified, is_available) 
-                     VALUES (:full_name, :email, :phone, :password, :license_number, :specialization, :experience_years, :consultation_fee, 1, 1)";
+    // Insert into users first to generate user_id
+    $insertUser = "INSERT INTO users (full_name, email, phone, password, user_type, is_verified, verification_method) 
+                   VALUES (:full_name, :email, :phone, :password, 'doctor', 1, 'email')";
+    
+    $stmtUser = $conn->prepare($insertUser);
+    $stmtUser->bindParam(':full_name', $fullName);
+    $stmtUser->bindParam(':email', $email);
+    $stmtUser->bindParam(':phone', $phone);
+    $stmtUser->bindParam(':password', $hashedPassword);
+    
+    if (!$stmtUser->execute()) {
+        throw new Exception("Failed to create user account for doctor");
+    }
+    
+    $userId = $conn->lastInsertId();
+
+    // Insert into doctors table with user_id
+    $insertDoctor = "INSERT INTO doctors (user_id, full_name, email, phone, password, license_number, specialization, experience_years, consultation_fee, is_verified, is_available) 
+                     VALUES (:user_id, :full_name, :email, :phone, :password, :license_number, :specialization, :experience_years, :consultation_fee, 1, 1)";
     
     $stmtDoctor = $conn->prepare($insertDoctor);
+    $stmtDoctor->bindParam(':user_id', $userId);
     $stmtDoctor->bindParam(':full_name', $fullName);
     $stmtDoctor->bindParam(':email', $email);
     $stmtDoctor->bindParam(':phone', $phone);
@@ -97,6 +114,8 @@ try {
     $stmtDoctor->bindParam(':consultation_fee', $consultationFee);
 
     if (!$stmtDoctor->execute()) {
+        // If doctor creation fails, delete the user
+        $conn->exec("DELETE FROM users WHERE id = $userId");
         throw new Exception("Failed to create doctor profile");
     }
     
@@ -104,8 +123,8 @@ try {
 
     $conn->commit();
 
-    // Get created doctor
-    $userQuery = "SELECT id, full_name, email, phone, license_number, specialization, is_verified, created_at FROM doctors WHERE id = :id";
+    // Get created doctor with user info
+    $userQuery = "SELECT id, user_id, full_name, email, phone, license_number, specialization, is_verified, created_at FROM doctors WHERE id = :id";
     $userStmt = $conn->prepare($userQuery);
     $userStmt->bindParam(':id', $doctorId);
     $userStmt->execute();

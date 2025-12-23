@@ -1,0 +1,60 @@
+All Doctors in DB:
+Array
+(
+    [0] => Array
+        (
+            [id] => 12
+            [user_id] => 28
+            [full_name] => Test Doctor
+        )
+
+    [1] => Array
+        (
+            [id] => 1
+            [user_id] => 13
+            [full_name] => moussa
+        )
+
+    [2] => Array
+        (
+            [id] => 2
+            [user_id] => 18
+            [full_name] => Saadouz
+        )
+
+    [3] => Array
+        (
+            [id] => 3
+            [user_id] => 19
+            [full_name] => dr.da7moud
+        )
+
+    [4] => Array
+        (
+            [id] => 10
+            [user_id] => 24
+            [full_name] => mohamed
+        )
+
+    [5] => Array
+        (
+            [id] => 4
+            [user_id] => 25
+            [full_name] => DR.Ayya
+        )
+
+    [6] => Array
+        (
+            [id] => 5
+            [user_id] => 26
+            [full_name] => DR.abou
+        )
+
+    [7] => Array
+        (
+            [id] => 11
+            [user_id] => 27
+            [full_name] => Mariem
+        )
+
+)

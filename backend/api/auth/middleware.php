@@ -46,16 +46,29 @@ function authenticate($requiredType = null) {
 
         // Now fetch user from appropriate table
         if ($userType === 'doctor') {
-            $query = "SELECT *, 'doctor' as user_type FROM doctors WHERE id = :id";
+            // CRITICAL FIX: Session stores user_id (from users table). 
+            // We must find the doctor profile linked to this user_id.
+            $query = "SELECT *, 'doctor' as user_type FROM doctors WHERE user_id = :id";
+            $stmt = $conn->prepare($query);
+            $stmt->bindParam(':id', $userId);
+            $stmt->execute();
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            // FALLBACK: If no doctor record exists, use users table
+            if (!$user) {
+                $query = "SELECT *, 'doctor' as user_type FROM users WHERE id = :id";
+                $stmt = $conn->prepare($query);
+                $stmt->bindParam(':id', $userId);
+                $stmt->execute();
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
         } else {
             $query = "SELECT *, 'patient' as user_type FROM users WHERE id = :id";
+            $stmt = $conn->prepare($query);
+            $stmt->bindParam(':id', $userId);
+            $stmt->execute();
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
         }
-        
-        $stmt = $conn->prepare($query);
-        $stmt->bindParam(':id', $userId);
-        $stmt->execute();
-        
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$user) {
             http_response_code(401);

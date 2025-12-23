@@ -11,11 +11,10 @@ try {
     $db = Database::getInstance();
     $conn = $db->getConnection();
     
-    // 1. Get Today's Appointments Count
+    // 1. Get Appointments needing approval (Pending)
     $todayQuery = "SELECT COUNT(*) as count FROM appointments 
                    WHERE doctor_id = :doctor_id 
-                   AND appointment_date = CURRENT_DATE() 
-                   AND status != 'cancelled'";
+                   AND status = 'pending'";
     $todayStmt = $conn->prepare($todayQuery);
     $todayStmt->bindParam(':doctor_id', $doctorId);
     $todayStmt->execute();

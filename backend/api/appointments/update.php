@@ -22,9 +22,14 @@ try {
     $db = Database::getInstance();
     $conn = $db->getConnection();
     
-    // Check authorization
+    // Check authorization based on role
+    $userCondition = "patient_id = :user_id";
+    if (isset($user['user_type']) && $user['user_type'] === 'doctor') {
+         $userCondition = "doctor_id = :user_id";
+    }
+
     $checkQuery = "SELECT * FROM appointments 
-                   WHERE id = :id AND (patient_id = :user_id OR doctor_id = :user_id)";
+                   WHERE id = :id AND ($userCondition)";
     $checkStmt = $conn->prepare($checkQuery);
     $checkStmt->bindParam(':id', $input['id']);
     $checkStmt->bindParam(':user_id', $user['id']);
