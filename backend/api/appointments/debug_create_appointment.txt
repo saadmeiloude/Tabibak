@@ -129,3 +129,67 @@
 2025-12-23 10:29:15 - RESOLVED Doctor ID from 13 to 1
 2025-12-23 10:29:15 - Success! ID: 37
 ---
+2025-12-23 10:59:37 - Input: Array
+(
+    [doctor_id] => 24
+    [appointment_date] => 2025-12-24
+    [appointment_time] => 10:00:00
+    [symptoms] => Booking via Calendar
+    [consultation_type] => online
+    [duration_minutes] => 30
+)
+
+2025-12-23 10:59:37 - User: Array
+(
+    [id] => 30
+    [email] => sala7@gmail.com
+    [phone] => 30768945
+    [password] => $2y$10$aoYx3AgwgARL/M2Fhi94JuDfm0AVPVfzgohyTQdDd6xA9GgaYevsS
+    [full_name] => Sala7
+    [user_type] => patient
+    [profile_image] => 
+    [date_of_birth] => 
+    [gender] => male
+    [address] => 
+    [emergency_contact] => 
+    [verification_method] => sms
+    [is_verified] => 1
+    [is_active] => 1
+    [created_at] => 2025-12-23 10:57:28
+    [updated_at] => 2025-12-23 10:57:28
+)
+
+2025-12-23 10:59:37 - RESOLVED Doctor ID from 24 to 10
+2025-12-23 11:04:38 - Input: Array
+(
+    [doctor_id] => 24
+    [appointment_date] => 2025-12-28
+    [appointment_time] => 19:00:00
+    [symptoms] => Booking via Calendar
+    [consultation_type] => online
+    [duration_minutes] => 30
+)
+
+2025-12-23 11:04:38 - User: Array
+(
+    [id] => 30
+    [email] => sala7@gmail.com
+    [phone] => 30768945
+    [password] => $2y$10$aoYx3AgwgARL/M2Fhi94JuDfm0AVPVfzgohyTQdDd6xA9GgaYevsS
+    [full_name] => Sala7
+    [user_type] => patient
+    [profile_image] => 
+    [date_of_birth] => 
+    [gender] => male
+    [address] => 
+    [emergency_contact] => 
+    [verification_method] => sms
+    [is_verified] => 1
+    [is_active] => 1
+    [created_at] => 2025-12-23 10:57:28
+    [updated_at] => 2025-12-23 10:57:28
+)
+
+2025-12-23 11:04:38 - RESOLVED Doctor ID from 24 to 10
+2025-12-23 11:04:39 - Success! ID: 38
+---

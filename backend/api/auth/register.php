@@ -93,6 +93,9 @@ try {
     if ($insertStmt->execute()) {
         $userId = $conn->lastInsertId();
         
+        // DEBUG LOG
+        file_put_contents('debug_register.txt', date('Y-m-d H:i:s') . " - SUCCESS: User $userId created - $fullName ($email)\n", FILE_APPEND);
+        
         // Get the created user (without password)
         $userQuery = "SELECT id, full_name, email, phone, user_type, verification_method, is_verified, created_at FROM users WHERE id = :id";
         $userStmt = $conn->prepare($userQuery);
@@ -110,6 +113,8 @@ try {
             ]
         ]);
     } else {
+        // DEBUG LOG
+        file_put_contents('debug_register.txt', date('Y-m-d H:i:s') . " - FAILED: Insert failed for $fullName ($email)\n", FILE_APPEND);
         http_response_code(500);
         echo json_encode(['error' => 'Failed to create account']);
     }

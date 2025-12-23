@@ -124,3 +124,70 @@ Resolved Doctor ID: 1
 Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
 Found: 7 appointments.
 ---
+2025-12-23 10:58:49
+User ID: 30 (Type: patient)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 0 appointments.
+Total appointments in DB for doctor 0: 0
+---
+2025-12-23 10:58:49
+User ID: 30 (Type: patient)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 0 appointments.
+Total appointments in DB for doctor 0: 0
+---
+2025-12-23 11:04:39
+User ID: 30 (Type: patient)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 1 appointments.
+---
+2025-12-23 11:05:23
+User ID: 30 (Type: patient)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 1 appointments.
+---
+2025-12-23 11:05:23
+User ID: 30 (Type: patient)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 1 appointments.
+---
+2025-12-23 11:05:54
+User ID: 10 (Type: doctor)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 0 appointments.
+Total appointments in DB for doctor 0: 0
+---
+2025-12-23 11:09:41
+User ID: 10 (Type: doctor)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 0 appointments.
+Total appointments in DB for doctor 0: 0
+---
+2025-12-23 11:10:54
+User ID: 10 (Type: doctor)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 0 appointments.
+Total appointments in DB for doctor 0: 0
+---
+2025-12-23 12:29:19
+User ID: 32 (Type: patient)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 0 appointments.
+Total appointments in DB for doctor 0: 0
+---
+2025-12-23 12:29:19
+User ID: 32 (Type: patient)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 0 appointments.
+Total appointments in DB for doctor 0: 0
+---
