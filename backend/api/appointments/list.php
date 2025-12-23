@@ -45,8 +45,21 @@ try {
     // Determine doctor ID
     $doctorId = 0;
     if (isset($user['user_type']) && $user['user_type'] === 'doctor') {
-        $doctorId = $user['id'];
+        // Check if user data came from doctors table (has user_id field)
+        // or from users table fallback (doesn't have user_id field)
+        if (isset($user['user_id'])) {
+            // Data from doctors table - id is doctor_id
+            $doctorId = $user['id'];
+        } else {
+            // Data from users table fallback - need to lookup doctor_id
+            $doctorQuery = "SELECT id FROM doctors WHERE user_id = :uid";
+            $dStmt = $conn->prepare($doctorQuery);
+            $dStmt->bindParam(':uid', $user['id']);
+            $dStmt->execute();
+            $doctorId = $dStmt->fetchColumn();
+        }
     } else {
+        // For patients, check if they have a doctor profile
         $doctorQuery = "SELECT id FROM doctors WHERE user_id = :uid";
         $dStmt = $conn->prepare($doctorQuery);
         $dStmt->bindParam(':uid', $user['id']);
@@ -54,7 +67,7 @@ try {
         $doctorId = $dStmt->fetchColumn();
     }
     
-    // If user is not keywords doctor, this param might not matching anything, which is fine for patient view
+    // If user is not a doctor, this param might not match anything, which is fine for patient view
     // But to be safe, if $doctorId is false (not found), we pass 0 or NULL
     $bindDoctorId = $doctorId ? $doctorId : 0;
     
