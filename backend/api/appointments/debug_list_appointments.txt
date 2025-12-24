@@ -315,3 +315,114 @@ Resolved Doctor ID: 14
 Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
 Found: 1 appointments.
 ---
+2025-12-23 22:02:32
+User ID: 14 (Type: doctor)
+Resolved Doctor ID: 14
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 1 appointments.
+---
+2025-12-24 11:37:05
+User ID: 7 (Type: patient)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 0 appointments.
+Total appointments in DB for doctor 0: 0
+---
+2025-12-24 11:37:05
+User ID: 7 (Type: patient)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 0 appointments.
+Total appointments in DB for doctor 0: 0
+---
+2025-12-24 11:37:21
+User ID: 7 (Type: patient)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 0 appointments.
+Total appointments in DB for doctor 0: 0
+---
+2025-12-24 11:42:32
+User ID: 7 (Type: patient)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 1 appointments.
+---
+2025-12-24 11:43:30
+User ID: 7 (Type: patient)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 1 appointments.
+---
+2025-12-24 11:43:30
+User ID: 7 (Type: patient)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 1 appointments.
+---
+2025-12-24 11:44:16
+User ID: 14 (Type: doctor)
+Resolved Doctor ID: 14
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 2 appointments.
+---
+2025-12-24 11:45:11
+User ID: 14 (Type: doctor)
+Resolved Doctor ID: 14
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 2 appointments.
+---
+2025-12-24 11:45:15
+User ID: 14 (Type: doctor)
+Resolved Doctor ID: 14
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 2 appointments.
+---
+2025-12-24 11:45:22
+User ID: 14 (Type: doctor)
+Resolved Doctor ID: 14
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 2 appointments.
+---
+2025-12-24 11:51:19
+User ID: 14 (Type: doctor)
+Resolved Doctor ID: 14
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 2 appointments.
+---
+2025-12-24 11:53:54
+User ID: 14 (Type: doctor)
+Resolved Doctor ID: 14
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 2 appointments.
+---
+2025-12-24 11:57:26
+User ID: 7 (Type: patient)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 1 appointments.
+---
+2025-12-24 11:57:26
+User ID: 7 (Type: patient)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 1 appointments.
+---
+2025-12-24 11:57:53
+User ID: 7 (Type: patient)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 2 appointments.
+---
+2025-12-24 11:57:53
+User ID: 7 (Type: patient)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 2 appointments.
+---
+2025-12-24 11:58:11
+User ID: 7 (Type: patient)
+Resolved Doctor ID: 0
+Where Clause: (patient_id = :patient_id OR doctor_id = :doctor_id)
+Found: 2 appointments.
+---

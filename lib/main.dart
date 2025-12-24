@@ -74,7 +74,11 @@ class MyApp extends StatelessWidget {
             '/': (context) => const WelcomeScreen(),
             '/login': (context) => const LoginScreen(),
             '/register': (context) => const RegisterScreen(),
-            '/home': (context) => const MainLayout(),
+            '/home': (context) {
+              final args = ModalRoute.of(context)?.settings.arguments;
+              final index = args is int ? args : 0;
+              return MainLayout(initialIndex: index);
+            },
             '/doctors': (context) => const DoctorsScreen(),
             '/appointments': (context) => const AppointmentsScreen(),
             '/profile': (context) => const ProfileScreen(),

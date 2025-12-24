@@ -721,11 +721,12 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
           ),
         );
 
-        // Navigate to appointments
+        // Navigate to appointments tab in home
         Navigator.pushNamedAndRemoveUntil(
           context,
-          '/appointments',
+          '/home',
           (route) => false,
+          arguments: 1,
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

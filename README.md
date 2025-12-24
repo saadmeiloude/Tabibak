@@ -1,16 +1,18 @@
 # tabibek
 
-A new Flutter project.
+Un nouveau projet Flutter.
 
-## Getting Started
+## Premiers pas
 
-This project is a starting point for a Flutter application.
+Ce projet est un point de départ pour une application Flutter.
 
-A few resources to get you started if this is your first Flutter project:
+Voici quelques ressources pour vous aider à démarrer si c'est votre premier projet Flutter :
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- [Atelier : Écrire votre première application Flutter](https://docs.flutter.dev/get-started/codelab)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- [Livre de recettes : Exemples Flutter utiles](https://docs.flutter.dev/cookbook)
+
+Pour obtenir de l'aide concernant le développement Flutter, consultez la
+[documentation en ligne](https://docs.flutter.dev/), qui propose des tutoriels,
+
+des exemples, des conseils sur le développement mobile et une documentation complète de l'API.
