@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
@@ -7,7 +8,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiService {
   // For web/chrome, use your computer's IP address
   // Replace '192.168.1.100' with your actual IP address
-  static const String baseUrl = 'http://localhost:8000';
+  // Platform-aware baseUrl
+  static String get baseUrl {
+    if (Platform.isAndroid) {
+      return 'http://10.0.2.2:8000'; // Android Emulator
+    }
+    return 'http://localhost:8000'; // iOS / Web / Desktop
+  }
 
   // Get stored token
   static Future<String?> getToken() async {

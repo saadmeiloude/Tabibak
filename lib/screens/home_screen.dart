@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
 import '../services/data_service.dart';
 import '../services/auth_service.dart';
+import '../models/appointment.dart';
 import '../core/localization/app_localizations.dart';
 
 class HomeScreen extends StatefulWidget {

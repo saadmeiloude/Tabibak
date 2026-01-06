@@ -8,6 +8,8 @@ import '../widgets/custom_button.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/data_service.dart';
+import '../models/user.dart';
+import '../models/medical_record.dart';
 import 'package:provider/provider.dart';
 import '../services/language_service.dart';
 import '../core/localization/app_localizations.dart';

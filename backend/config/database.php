@@ -3,7 +3,7 @@
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'tabibak');
 define('DB_USER', 'root');
-define('DB_PASS', ''); // No password as specified
+define('DB_PASS', 'new_password'); // No password as specified
 define('DB_CHARSET', 'utf8mb4');
 
 // Enable CORS for Flutter app

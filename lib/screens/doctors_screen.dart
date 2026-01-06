@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
 import '../core/localization/app_localizations.dart';
 import '../services/data_service.dart';
+import '../models/doctor.dart';
 
 class DoctorsScreen extends StatefulWidget {
   const DoctorsScreen({super.key});

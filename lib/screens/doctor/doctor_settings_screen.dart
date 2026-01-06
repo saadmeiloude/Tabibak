@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../services/api_service.dart';
 import '../../services/data_service.dart';
 import '../../services/auth_service.dart';
+import '../../models/user.dart';
 import '../../core/localization/app_localizations.dart';
 import 'package:provider/provider.dart';
 import '../../services/language_service.dart';
