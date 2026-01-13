@@ -4,6 +4,10 @@ import '../core/constants/colors.dart';
 import '../core/constants/mauritanian_constants.dart';
 import '../widgets/custom_button.dart';
 import '../services/data_service.dart';
+import '../services/auth_service.dart';
+import '../services/availability_service.dart';
+import '../models/time_slot.dart';
+import '../models/appointment.dart';
 
 class BookingCalendarScreen extends StatefulWidget {
   final Map<String, dynamic>? doctor;
@@ -21,13 +25,14 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
   bool _repeatBooking = false;
   String _repeatFrequency = 'weekly'; // 'weekly', 'monthly'
 
-  // Available time slots (Static for demo, ideally fetched from API based on doctorId & date)
-  final List<String> _morningSlots = ['10:00 ص', '10:30 ص', '11:00 ص'];
-  final List<String> _afternoonSlots = ['2:00 م', '2:30 م', '4:00 م', '4:30 م'];
-  final List<String> _eveningSlots = ['6:00 م', '6:30 م', '7:00 م'];
-
-  // Booked slots to show unavailable times
+  final AvailabilityService _availabilityService = AvailabilityService();
+  bool _isLoadingSlots = false;
   final Set<String> _bookedSlots = {};
+  List<TimeSlot> _availableSlots = [];
+
+  List<String> _morningSlots = [];
+  List<String> _afternoonSlots = [];
+  List<String> _eveningSlots = [];
 
   // ... (keep getters like _daysInMonth, _monthName, _getWeekdayName)
   List<DateTime> get _daysInMonth {
@@ -62,9 +67,88 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
     return date.isAfter(DateTime.now().subtract(const Duration(days: 1)));
   }
 
+  Future<void> _loadAvailableSlots(DateTime date) async {
+    final doctorIdRaw = widget.doctor?['id'];
+    if (doctorIdRaw == null) return;
+
+    final int doctorId = doctorIdRaw is int
+        ? doctorIdRaw
+        : int.tryParse(doctorIdRaw.toString()) ?? 0;
+
+    if (doctorId == 0) return;
+
+    // Generate Fixed Slots as requested: 9h-14h and 17h-22h
+    // This provides a "fixed" schedule while still allowing backend integration support
+    setState(() {
+      _isLoadingSlots = true;
+      _morningSlots = [];
+      _afternoonSlots = [];
+      _eveningSlots = [];
+      _bookedSlots.clear();
+      
+      // Morning/Afternoon (9h - 14h)
+      for (int h = 9; h < 14; h++) {
+        final slot1 = _formatSlotTime("$h:00");
+        final slot2 = _formatSlotTime("$h:30");
+        
+        if (h < 12) {
+          _morningSlots.add(slot1);
+          _morningSlots.add(slot2);
+        } else {
+          _afternoonSlots.add(slot1);
+          _afternoonSlots.add(slot2);
+        }
+      }
+      
+      // Fixed: The user requested up to 14h, let's add 14:00 specifically
+      _afternoonSlots.add(_formatSlotTime("14:00"));
+
+      // Evening (17h - 22h)
+      for (int h = 17; h < 22; h++) {
+        _eveningSlots.add(_formatSlotTime("$h:00"));
+        _eveningSlots.add(_formatSlotTime("$h:30"));
+      }
+      // Add 22:00 specifically
+      _eveningSlots.add(_formatSlotTime("22:00"));
+
+      _isLoadingSlots = false;
+    });
+
+    try {
+      final slots = await _availabilityService.getAvailableSlotsForDate(
+        doctorId: doctorId,
+        date: date,
+      );
+
+      if (mounted) {
+        setState(() {
+          _availableSlots = slots;
+          for (var slot in slots) {
+            if (slot.isBooked) {
+              _bookedSlots.add(_formatSlotTime(slot.startTime));
+            }
+          }
+        });
+      }
+    } catch (e) {
+      print('Error loading slots from backend: $e');
+    }
+  }
+
+  String _formatSlotTime(String time24) {
+    final parts = time24.split(':');
+    final hour = int.parse(parts[0]);
+    final minute = parts[1];
+    
+    if (hour == 0) return '12:$minute ص';
+    if (hour < 12) return '$hour:$minute ص';
+    if (hour == 12) return '12:$minute م';
+    return '${hour - 12}:$minute م';
+  }
+
   bool _isTimeSlotAvailable(DateTime date, String time) {
-    final slotKey = '${date.day}-${date.month}-${time}';
-    return !_bookedSlots.contains(slotKey);
+    // Check if the slot is in the booked set
+    return !_bookedSlots.contains(time);
   }
 
   @override
@@ -253,9 +337,9 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                                   ? () {
                                       setState(() {
                                         _selectedDate = date;
-                                        _selectedTime =
-                                            null; // Reset time when date changes
+                                        _selectedTime = null;
                                       });
+                                      _loadAvailableSlots(date);
                                     }
                                   : null,
                               child: Container(
@@ -312,8 +396,14 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
-                    // Morning slots
+                    if (_isLoadingSlots)
+                      const Center(child: CircularProgressIndicator())
+                    else if (_morningSlots.isEmpty && _afternoonSlots.isEmpty && _eveningSlots.isEmpty)
+                      const Center(child: Padding(
+                        padding: EdgeInsets.all(20.0),
+                        child: Text('لا توجد مواعيد متاحة لهذا اليوم'),
+                      ))
+                    else ...[
                     if (_morningSlots.isNotEmpty) ...[
                       const Text(
                         'الصباح',
@@ -371,8 +461,7 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                             .toList(),
                       ),
                     ],
-
-                    const SizedBox(height: 24),
+                  ],
                   ],
 
                   // Repeat Booking Option
@@ -456,7 +545,7 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
               ),
             ),
           ),
-
+          const SizedBox(height: 16),
           // Bottom Payment Bar
           Container(
             padding: const EdgeInsets.all(16),
@@ -696,14 +785,33 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
         return;
       }
 
+      final user = await AuthService.getCurrentUser();
+      if (user == null) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('يرجى تسجيل الدخول أولاً')),
+        );
+        return;
+      }
+
+      // Try to get real patientId from userId
+      int? patientId = await DataService.getPatientIdByUserId(user.id);
+      
+      // If not found, use userId as last resort (though backend might fail)
+      patientId ??= user.id;
+
+      print('DEBUG: Booking for UserId: ${user.id}, PatientId: $patientId');
+
       // Call API to create appointment
       final result = await DataService.createAppointment(
         doctorId: doctorId,
-        appointmentDate: _selectedDate!,
-        appointmentTime: appointmentTime,
-        consultationType: 'online', // Inferred from "Checking online" text
-        durationMinutes: 30,
-        symptoms: 'Booking via Calendar', // Placeholder
+        patientId: patientId,
+        appointmentDate: appointmentTime,
+        notes: 'Booking via Calendar',
+        doctorName: widget.doctor?['name'],
+        patientName: user.fullName,
+        specialty: widget.doctor?['specialty'],
+        department: widget.doctor?['department'],
       );
 
       Navigator.pop(context); // Close progress dialog

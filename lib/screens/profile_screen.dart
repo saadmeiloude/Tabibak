@@ -5,7 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import '../core/constants/colors.dart';
 import '../widgets/custom_button.dart';
-import '../services/api_service.dart';
+import '../core/config/api_config.dart';
 import '../services/auth_service.dart';
 import '../services/data_service.dart';
 import '../models/user.dart';
@@ -112,13 +112,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         backgroundImage: _profileImagePath != null
                             ? (_profileImagePath!.startsWith('http') ||
                                       _profileImagePath!.startsWith('uploads/')
-                                  ? NetworkImage(
-                                          _profileImagePath!.startsWith('http')
-                                              ? _profileImagePath!
-                                              : '${ApiService.baseUrl}/$_profileImagePath',
-                                        )
-                                        as ImageProvider
-                                  : FileImage(File(_profileImagePath!)))
+                              ? NetworkImage(
+                                      _profileImagePath!.startsWith('http')
+                                          ? _profileImagePath!
+                                          : '${ApiConfig.baseUrl}/${_profileImagePath!.startsWith('/') ? _profileImagePath!.substring(1) : _profileImagePath}',
+                                    )
+                                    as ImageProvider
+                                  : (kIsWeb 
+                                      ? NetworkImage(_profileImagePath!)
+                                      : FileImage(File(_profileImagePath!)) as ImageProvider))
                             : null,
                         child: _profileImagePath == null
                             ? Icon(
@@ -602,16 +604,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           // Update local user in AuthService so it persists
           final currentUser = await AuthService.getCurrentUser();
           if (currentUser != null) {
+            final nameParts = currentUser.fullName.split(' ');
             final updatedUser = User(
               id: currentUser.id,
-              fullName: currentUser.fullName,
+              firstName: nameParts.isNotEmpty ? nameParts.first : '',
+              lastName: nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '',
               email: currentUser.email,
               phone: currentUser.phone,
-              userType: currentUser.userType,
+              role: currentUser.role,
               verificationMethod: currentUser.verificationMethod,
               isVerified: currentUser.isVerified,
+              isActive: currentUser.isActive,
               createdAt: currentUser.createdAt,
-              profileImage: newPath, // Update the path
+              updatedAt: currentUser.updatedAt,
+              avatarUrl: newPath, // Update the path
               dateOfBirth: currentUser.dateOfBirth,
               gender: currentUser.gender,
               address: currentUser.address,

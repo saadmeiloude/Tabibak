@@ -3,6 +3,7 @@ import '../core/constants/colors.dart';
 import '../services/data_service.dart';
 import '../services/auth_service.dart';
 import '../models/appointment.dart';
+import '../core/models/enums.dart';
 import '../core/localization/app_localizations.dart';
 
 class AppointmentsScreen extends StatefulWidget {
@@ -18,6 +19,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
   List<Appointment> _upcomingAppointments = [];
   List<Appointment> _pastAppointments = [];
   bool _isLoading = true;
+  String? _errorMessage;
+  bool _isDoctor = false;
+  AppointmentStatus? _selectedStatus; // null means 'All'
 
   @override
   void initState() {
@@ -27,23 +31,37 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
   }
 
   Future<void> _loadAppointments() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
     try {
       final user = await AuthService.getCurrentUser();
-      if (user == null) return;
+      if (user == null) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'الرجاء تسجيل الدخول أولاً';
+        });
+        return;
+      }
 
       final result = await DataService.getUserAppointments(userId: user.id);
 
       if (!mounted) return;
 
       if (result['success']) {
-        final List<Appointment> appointments =
-            result['appointments']; // Assumes cast works or is typed
+        final List<Appointment> appointments = result['appointments'];
         final now = DateTime.now();
 
         setState(() {
+          _isDoctor = user.role == UserRole.doctor;
           _upcomingAppointments = appointments.where((apt) {
-            return apt.status != 'cancelled' &&
-                apt.status != 'completed' &&
+            bool matchesStatus = _selectedStatus == null || apt.status == _selectedStatus;
+            
+            return matchesStatus && 
+                apt.status != AppointmentStatus.cancelled &&
+                apt.status != AppointmentStatus.completed &&
                 (apt.appointmentDate.isAfter(now) ||
                     (apt.appointmentDate.day == now.day &&
                         apt.appointmentDate.month == now.month &&
@@ -51,27 +69,30 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
           }).toList();
 
           _pastAppointments = appointments.where((apt) {
-            return apt.status == 'cancelled' ||
-                apt.status == 'completed' ||
+            bool matchesStatus = _selectedStatus == null || apt.status == _selectedStatus;
+
+            return matchesStatus && (
+                apt.status == AppointmentStatus.cancelled ||
+                apt.status == AppointmentStatus.completed ||
                 apt.appointmentDate.isBefore(
                   DateTime(now.year, now.month, now.day),
-                );
+                ));
           }).toList();
 
           _isLoading = false;
         });
       } else {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'] ?? 'فشل تحميل المواعيد')),
-        );
+        setState(() {
+          _isLoading = false;
+          _errorMessage = result['message'] ?? 'فشل تحميل المواعيد';
+        });
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('خطأ: $e')));
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'حدث خطأ في الاتصال: $e';
+        });
       }
     }
   }
@@ -114,15 +135,89 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
           ],
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildUpcomingAppointments(),
-                _buildPastAppointments(),
-              ],
-            ),
+      body: Column(
+        children: [
+          _buildStatusFilters(),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _errorMessage != null
+                    ? _buildErrorView()
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          RefreshIndicator(
+                            onRefresh: _loadAppointments,
+                            child: _buildUpcomingAppointments(),
+                          ),
+                          RefreshIndicator(
+                            onRefresh: _loadAppointments,
+                            child: _buildPastAppointments(),
+                          ),
+                        ],
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusFilters() {
+    return Container(
+      height: 50,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          _statusChip('الكل', null),
+          _statusChip('المؤكدة', AppointmentStatus.confirmed),
+          _statusChip('المكتملة', AppointmentStatus.completed),
+          _statusChip('الملغاة', AppointmentStatus.cancelled),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusChip(String label, AppointmentStatus? status) {
+    final isSelected = _selectedStatus == status;
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: isSelected,
+        onSelected: (selected) {
+          if (selected) {
+            setState(() {
+              _selectedStatus = status;
+              _loadAppointments();
+            });
+          }
+        },
+        selectedColor: AppColors.primary.withOpacity(0.2),
+        labelStyle: TextStyle(
+          color: isSelected ? AppColors.primary : AppColors.textSecondary,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 48, color: Colors.red),
+          const SizedBox(height: 16),
+          Text(_errorMessage ?? 'فشل تحميل المواعيد'),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: _loadAppointments,
+            child: const Text('إعادة المحاولة'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -205,9 +300,13 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
     required Appointment appointment,
     required bool isPast,
   }) {
-    final doctorName = appointment.doctorName ?? 'طبيب';
-    final specialty =
-        'تخصص عام'; // we might need to fetch this or include in query
+    print(appointment.id);
+    // Determine which name to show based on user role
+    final doctorName = appointment.doctorName ?? (AppLocalizations.of(context)?.translate('doctor') ?? 'طبيب');
+    final displayName = _isDoctor ? (appointment.patientName ?? 'مريض') : doctorName;
+    final displayIcon = _isDoctor ? Icons.person : Icons.medical_services;
+
+    final specialty = appointment.specialty ?? 'تخصص عام';
     final date =
         '${appointment.appointmentDate.year}-${appointment.appointmentDate.month}-${appointment.appointmentDate.day} ${appointment.appointmentTime.hour}:${appointment.appointmentTime.minute}';
     final location = appointment.consultationType == 'online'
@@ -230,14 +329,14 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
       ),
       child: Column(
         children: [
-          // Header: Doctor Info
+          // Header: Doctor/Patient Info
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
                 radius: 25,
                 backgroundColor: Colors.grey.shade200,
-                child: const Icon(Icons.person, color: Colors.grey),
+                child: Icon(displayIcon, color: Colors.grey),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -245,7 +344,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      doctorName,
+                      displayName,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -470,14 +569,22 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
             ),
             ElevatedButton(
               onPressed: () async {
-                Navigator.of(context).pop();
+                // We need to capture these before popping any context
+                final parentNavigator = Navigator.of(context);
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
 
-                // Show loading
+                // 1. Close the confirmation dialog
+                parentNavigator.pop();
+
+                // 2. Show loading dialog
+                BuildContext? loadingContext;
                 showDialog(
                   context: context,
                   barrierDismissible: false,
-                  builder: (context) =>
-                      const Center(child: CircularProgressIndicator()),
+                  builder: (ctx) {
+                    loadingContext = ctx;
+                    return const Center(child: CircularProgressIndicator());
+                  },
                 );
 
                 try {
@@ -485,22 +592,26 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
                     appointment.id,
                   );
 
-                  Navigator.of(context).pop(); // Close loading dialog
+                  // 3. Pop loading dialog
+                  if (loadingContext != null && loadingContext!.mounted) {
+                    Navigator.of(loadingContext!).pop();
+                  }
+
+                  if (!mounted) return;
 
                   if (result['success']) {
                     setState(() {
-                      // Refresh list
                       _loadAppointments();
                     });
 
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    scaffoldMessenger.showSnackBar(
                       SnackBar(
                         content: Text('تم إلغاء الموعد مع $doctorName'),
                         backgroundColor: Colors.green,
                       ),
                     );
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    scaffoldMessenger.showSnackBar(
                       SnackBar(
                         content: Text(result['message'] ?? 'فشل الإلغاء'),
                         backgroundColor: Colors.red,
@@ -508,8 +619,13 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
                     );
                   }
                 } catch (e) {
-                  Navigator.of(context).pop(); // Close loading dialog
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  // Pop loading dialog if something goes wrong
+                  if (loadingContext != null && loadingContext!.mounted) {
+                    Navigator.of(loadingContext!).pop();
+                  }
+                  
+                  if (!mounted) return;
+                  scaffoldMessenger.showSnackBar(
                     SnackBar(
                       content: Text('حدث خطأ في إلغاء الموعد: $e'),
                       backgroundColor: Colors.red,

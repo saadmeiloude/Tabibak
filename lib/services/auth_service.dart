@@ -1,96 +1,95 @@
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'api_service.dart';
-
+import 'dart:convert';
 import '../models/user.dart';
+import '../core/api/api_client.dart';
+import '../core/api/token_storage.dart';
+import 'package:dio/dio.dart';
 
 class AuthService {
-  static const String _userKey = 'current_user';
+  static const String _userKey = 'user_data';
+  final ApiClient _client = ApiClient();
 
-  // Store user data locally
-  static Future<void> storeUser(User user) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_userKey, json.encode(user.toJson()));
-  }
+  // --- Static Compatibility Layer ---
 
-  // Get stored user data
-  static Future<User?> getStoredUser() async {
+  static Future<User?> getCurrentUser() async {
     final prefs = await SharedPreferences.getInstance();
-    final userJson = prefs.getString(_userKey);
-    if (userJson != null) {
-      return User.fromJson(json.decode(userJson));
+    final userStr = prefs.getString(_userKey);
+    if (userStr != null) {
+      try {
+        return User.fromJson(jsonDecode(userStr));
+      } catch (e) {
+        return null;
+      }
     }
     return null;
   }
 
-  // Remove stored user data
-  static Future<void> removeStoredUser() async {
+  static Future<void> storeUser(dynamic user) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (user is User) {
+      await prefs.setString(_userKey, jsonEncode(user.toJson()));
+    } else if (user is Map<String, dynamic>) {
+      await prefs.setString(_userKey, jsonEncode(user));
+    }
+  }
+
+  static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_userKey);
+    await TokenStorage.clearTokens();
   }
 
-  // Login user with social provider
-  static Future<Map<String, dynamic>> loginWithSocial(
-    String provider,
-    String email,
-    String fullName,
-  ) async {
+  static Future<Map<String, dynamic>> login(String email, String password) async {
+    final client = ApiClient();
     try {
-      final response = await ApiService.request(
-        endpoint: 'api/auth/social_login.php',
-        method: 'POST',
-        data: {'provider': provider, 'email': email, 'full_name': fullName},
-      );
+      print('DEBUG: Attempting login for $email');
+      final response = await client.post('/auth/login', data: {
+        'email': email,
+        'password': password,
+      });
 
-      final result = ApiService.handleResponse(response);
+      final data = response.data;
+      print('DEBUG: Login response data keys: ${data.keys}');
 
-      if (result['success']) {
-        await ApiService.storeToken(result['data']['token']);
-        final user = User.fromJson(result['data']['user']);
-        await storeUser(user);
+      // Handle both pure JSON and Spring Boot standard responses
+      final dynamic accessTokenRaw = data['accessToken'] ?? data['token'];
+      final dynamic refreshTokenRaw = data['refreshToken'];
 
-        return {'success': true, 'user': user, 'message': result['message']};
+      if (accessTokenRaw != null) {
+        print('DEBUG: Saving tokens...');
+        await TokenStorage.saveTokens(
+          accessToken: accessTokenRaw.toString(),
+          refreshToken: refreshTokenRaw?.toString() ?? '',
+        );
       } else {
-        return {
-          'success': false,
-          'message': result['error'] ?? 'Social login failed',
-        };
+        print('DEBUG: Access token is null!');
       }
+
+      // Save User if present
+      if (data['user'] != null) {
+        print('DEBUG: Parsing user data: ${data['user']}');
+        try {
+          final user = User.fromJson(data['user']);
+          print('DEBUG: User parsed successfully: ${user.fullName}');
+          await storeUser(user);
+        } catch (e) {
+          print('DEBUG: User parsing failed: $e');
+          // Don't fail login if user parsing fails, just don't store local user yet
+        }
+      } else {
+        print('DEBUG: No user object in login response');
+      }
+
+      return {'success': true, 'data': data, 'user': data['user']};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      print('Login error: $e');
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
-  // Login user
-  static Future<Map<String, dynamic>> login(
-    String email,
-    String password,
-  ) async {
-    try {
-      final response = await ApiService.request(
-        endpoint: 'api/auth/login.php',
-        method: 'POST',
-        data: {'email': email, 'password': password},
-      );
-
-      final result = ApiService.handleResponse(response);
-
-      if (result['success']) {
-        // Store token and user data
-        await ApiService.storeToken(result['data']['token']);
-        final user = User.fromJson(result['data']['user']);
-        await storeUser(user);
-
-        return {'success': true, 'user': user, 'message': result['message']};
-      } else {
-        return {'success': false, 'message': result['error'] ?? 'Login failed'};
-      }
-    } catch (e) {
-      return {'success': false, 'message': e.toString()};
-    }
-  }
-
-  // Register user
   static Future<Map<String, dynamic>> register({
     required String fullName,
     required String email,
@@ -102,47 +101,47 @@ class AuthService {
     String? address,
     String? emergencyContact,
   }) async {
+    final client = ApiClient();
+    // Split full name into first and last name
+    final nameParts = fullName.trim().split(' ');
+    final firstName = nameParts.first;
+    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+
+    final data = {
+      'first_name': firstName,
+      'last_name': lastName,
+      'email': email,
+      'password': password,
+      'phone': phone,
+      'verification_method': verificationMethod,
+      'date_of_birth': dateOfBirth,
+      'gender': gender?.toUpperCase(),
+      'address': address,
+      'emergency_contact': emergencyContact,
+      'role': 'PATIENT',
+    };
+
     try {
-      final response = await ApiService.request(
-        endpoint: 'api/auth/register.php',
-        method: 'POST',
-        data: {
-          'full_name': fullName,
-          'email': email,
-          'password': password,
-          'phone': phone,
-          'verification_method': verificationMethod,
-          'date_of_birth': dateOfBirth,
-          'gender': gender,
-          'address': address,
-          'emergency_contact': emergencyContact,
-        },
-      );
+      print('Sending registration request to /auth/register with data: $data');
+      final response = await client.post('/auth/register', data: data);
+      print('Registration response: ${response.statusCode} - ${response.data}');
 
-      final result = ApiService.handleResponse(response);
-
-      if (result['success']) {
-        final user = User.fromJson(result['data']['user']);
-
-        return {
-          'success': true,
-          'user': user,
-          'message': result['message'],
-          'verification_required': result['data']['verification_required'],
-          'verification_method': result['data']['verification_method'],
-        };
-      } else {
-        return {
-          'success': false,
-          'message': result['error'] ?? 'Registration failed',
-        };
-      }
+      return {'success': true, 'data': response.data, 'message': 'Registration successful'};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      print('Registration Error: $e');
+      String errorMessage = e.toString().replaceAll('Exception: ', '');
+      
+      if (errorMessage.contains('Duplicate entry') || errorMessage.contains('already exists')) {
+        errorMessage = 'This email is already registered. Please login instead.';
+      }
+      
+      return {
+        'success': false,
+        'message': errorMessage
+      };
     }
   }
 
-  // Register doctor
   static Future<Map<String, dynamic>> registerDoctor({
     required String fullName,
     required String email,
@@ -152,118 +151,71 @@ class AuthService {
     required String specialization,
     required double consultationFee,
     required int experienceYears,
-    String? dateOfBirth,
-    String? gender,
-    String? address,
   }) async {
+    final client = ApiClient();
+    // Split full name into first and last name
+    final nameParts = fullName.trim().split(' ');
+    final firstName = nameParts.first;
+    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+
+    final data = {
+      'first_name': firstName,
+      'last_name': lastName,
+      'email': email,
+      'password': password,
+      'phone': phone,
+      'license_number': licenseNumber,
+      'specialty': specialization,
+      'consultation_fee': consultationFee,
+      'experience_years': experienceYears,
+      'role': 'DOCTOR',
+    };
+
     try {
-      final response = await ApiService.request(
-        endpoint: 'api/auth/register_doctor.php',
-        method: 'POST',
-        data: {
-          'full_name': fullName,
-          'email': email,
-          'password': password,
-          'phone': phone,
-          'license_number': licenseNumber,
-          'specialization': specialization,
-          'consultation_fee': consultationFee,
-          'experience_years': experienceYears,
-          'date_of_birth': dateOfBirth,
-          'gender': gender,
-          'address': address,
-        },
-      );
-
-      final result = ApiService.handleResponse(response);
-
-      if (result['success']) {
-        final user = User.fromJson(result['data']['user']);
-        return {'success': true, 'user': user, 'message': result['message']};
-      } else {
-        return {
-          'success': false,
-          'message': result['error'] ?? 'Registration failed',
-        };
-      }
+      final response = await client.post('/auth/register-doctor', data: data);
+      return {'success': true, 'data': response.data};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      print('Doctor registration error: $e');
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
-  // Logout user
-  static Future<Map<String, dynamic>> logout() async {
+  static Future<Map<String, dynamic>> loginWithSocial(
+    String provider, 
+    String email, 
+    String displayName
+  ) async {
+     final client = ApiClient();
     try {
-      final token = await ApiService.getToken();
-      if (token != null) {
-        await ApiService.request(
-          endpoint: 'api/auth/logout.php',
-          method: 'POST',
-          data: {'token': token},
+      final response = await client.dio.post('/auth/social-login', data: {
+
+        'provider': provider,
+        'email': email,
+        'name': displayName
+      });
+      
+      final data = response.data;
+      if (data['accessToken'] != null) {
+         await TokenStorage.saveTokens(
+          accessToken: data['accessToken'],
+          refreshToken: data['refreshToken'] ?? '',
         );
       }
-
-      // Clear stored data
-      await ApiService.removeToken();
-      await removeStoredUser();
-
-      return {'success': true, 'message': 'Logout successful'};
-    } catch (e) {
-      return {'success': false, 'message': e.toString()};
-    }
-  }
-
-  // Check if user is logged in
-  static Future<bool> isLoggedIn() async {
-    final token = await ApiService.getToken();
-    final user = await getStoredUser();
-    return token != null && user != null;
-  }
-
-  // Get current user
-  static Future<User?> getCurrentUser() async {
-    return await getStoredUser();
-  }
-
-  // Update user profile
-  static Future<Map<String, dynamic>> updateProfile({
-    String? fullName,
-    String? phone,
-    String? dateOfBirth,
-    String? gender,
-    String? address,
-    String? emergencyContact,
-  }) async {
-    try {
-      final response = await ApiService.request(
-        endpoint: 'api/user/profile.php',
-        method: 'PUT',
-        data: {
-          'full_name': fullName,
-          'phone': phone,
-          'date_of_birth': dateOfBirth,
-          'gender': gender,
-          'address': address,
-          'emergency_contact': emergencyContact,
-        },
-        requiresAuth: true,
-      );
-
-      final result = ApiService.handleResponse(response);
-
-      if (result['success']) {
-        final user = User.fromJson(result['data']['user']);
-        await storeUser(user);
-
-        return {'success': true, 'user': user, 'message': result['message']};
-      } else {
-        return {
-          'success': false,
-          'message': result['error'] ?? 'Profile update failed',
-        };
+      
+      if (data['user'] != null) {
+        await storeUser(User.fromJson(data['user']));
       }
+
+      return {'success': true, 'data': data};
     } catch (e) {
       return {'success': false, 'message': e.toString()};
     }
   }
+
+  // --- Instance Methods (New Architecture) ---
+  
+  // kept for future use if we switch to instance-based injection
 }

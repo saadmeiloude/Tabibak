@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/wallet_service.dart';
 import '../services/auth_service.dart';
+import '../models/wallet.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({Key? key}) : super(key: key);
@@ -19,6 +20,7 @@ class _WalletScreenState extends State<WalletScreen>
   bool _isLoading = true;
   bool _isLoadingTransactions = false;
   String? _error;
+  String? _selectedTypeFilter; // null means 'All'
 
   final NumberFormat _currencyFormat = NumberFormat('#,##0.00', 'ar');
 
@@ -50,20 +52,24 @@ class _WalletScreenState extends State<WalletScreen>
       final response = await WalletService.getWalletBalance(user.id);
 
       if (response['success']) {
-        setState(() {
-          _wallet = Wallet.fromJson(response['wallet']);
-          _statistics = response['statistics'];
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _wallet = Wallet.fromJson(response['wallet']);
+            _statistics = response['statistics'];
+            _isLoading = false;
+          });
+        }
         _loadTransactions();
       } else {
         throw Exception(response['message']);
       }
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -77,6 +83,7 @@ class _WalletScreenState extends State<WalletScreen>
     try {
       final response = await WalletService.getTransactions(
         userId: _wallet!.userId,
+        type: _selectedTypeFilter,
         limit: 50,
       );
 
@@ -87,6 +94,8 @@ class _WalletScreenState extends State<WalletScreen>
               .toList();
           _isLoadingTransactions = false;
         });
+      } else {
+        setState(() => _isLoadingTransactions = false);
       }
     } catch (e) {
       setState(() {
@@ -228,7 +237,7 @@ class _WalletScreenState extends State<WalletScreen>
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
 
-      if (response['success']) {
+      if (response['success'] != false) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(response['message'] ?? 'تم إرسال طلب الدفع بنجاح'),
@@ -406,7 +415,7 @@ class _WalletScreenState extends State<WalletScreen>
 
       Navigator.pop(context); // Close loading dialog
 
-      if (response['success']) {
+      if (response['success'] != false) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(response['message']),
@@ -672,33 +681,86 @@ class _WalletScreenState extends State<WalletScreen>
   }
 
   Widget _buildTransactionsTab() {
-    return RefreshIndicator(
-      onRefresh: _loadTransactions,
-      child: _isLoadingTransactions
-          ? const Center(child: CircularProgressIndicator())
-          : _transactions.isEmpty
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.receipt_long_outlined,
-                    size: 64,
-                    color: Colors.grey,
-                  ),
-                  SizedBox(height: 16),
-                  Text('لا توجد معاملات بعد'),
-                ],
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _transactions.length,
-              itemBuilder: (context, index) {
-                final transaction = _transactions[index];
-                return _buildTransactionCard(transaction);
+    return Column(
+      children: [
+        _buildTransactionFilters(),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _loadTransactions,
+            child: _isLoadingTransactions
+                ? const Center(child: CircularProgressIndicator())
+                : _transactions.isEmpty
+                    ? _buildEmptyTransactionsView()
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _transactions.length,
+                        itemBuilder: (context, index) {
+                          final transaction = _transactions[index];
+                          return _buildTransactionCard(transaction);
+                        },
+                      ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTransactionFilters() {
+    final filters = [
+      {'label': 'الكل', 'type': null},
+      {'label': 'إيداع', 'type': 'deposit'},
+      {'label': 'سحب', 'type': 'withdrawal'},
+      {'label': 'دفع', 'type': 'payment'},
+      {'label': 'استرداد', 'type': 'refund'},
+    ];
+
+    return Container(
+      height: 50,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: filters.map((filter) {
+          final isSelected = _selectedTypeFilter == filter['type'];
+          return Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: ChoiceChip(
+              label: Text(filter['label'] as String),
+              selected: isSelected,
+              onSelected: (selected) {
+                if (selected) {
+                  setState(() {
+                    _selectedTypeFilter = filter['type'] as String?;
+                    _loadTransactions();
+                  });
+                }
               },
             ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildEmptyTransactionsView() {
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Container(
+        height: 400,
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 64,
+              color: Colors.grey,
+            ),
+            SizedBox(height: 16),
+            Text('لا توجد معاملات تطابق الفلتر'),
+          ],
+        ),
+      ),
     );
   }
 

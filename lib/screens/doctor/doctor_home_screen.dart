@@ -3,7 +3,11 @@ import '../../core/constants/colors.dart';
 import '../../services/data_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/appointment.dart';
+import '../../core/models/enums.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../services/notification_service.dart';
+import '../../models/notification.dart' as app_notification;
+import '../../models/doctor.dart';
 
 class DoctorHomeScreen extends StatefulWidget {
   const DoctorHomeScreen({super.key});
@@ -17,10 +21,12 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
   int _todayAppointments = 0;
   int _newPatients = 0;
   int _totalPatients = 0;
+  num _totalEarnings = 0;
   List<Appointment> _upcomingAppointments = [];
   List<Map<String, dynamic>> _recentPatients = [];
   List<Map<String, dynamic>> _recentlyAddedPatients = [];
   String _doctorName = 'د. أحمد';
+  int? _realDoctorId;
 
   @override
   void initState() {
@@ -37,73 +43,104 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
       final user = await AuthService.getCurrentUser();
       if (user == null) return;
 
-      final statsResult = await DataService.getDoctorDashboardStats();
-
-      setState(() {
+      // Fetch the real doctor ID 
+      final doctorResult = await DataService.getDoctorProfile();
+      if (doctorResult['success']) {
+        final doctor = doctorResult['doctor'] as Doctor;
+        _realDoctorId = doctor.id;
+        _doctorName = doctor.name ?? user.fullName;
+      } else {
+        _realDoctorId = user.id;
         _doctorName = user.fullName;
+      }
 
-        if (statsResult['success'] == true) {
-          final data = statsResult['data'];
-          _todayAppointments =
-              int.tryParse(data['today_appointments'].toString()) ?? 0;
-          _newPatients = int.tryParse(data['new_patients'].toString()) ?? 0;
-          _totalPatients = int.tryParse(data['total_patients'].toString()) ?? 0;
+      final statsResult = await DataService.getDoctorDashboardStats();
+      print('DEBUG: Doctor stats raw response: $statsResult');
 
-          // Map recently added patients
-          _recentlyAddedPatients =
-              (data['recently_added_patients'] as List? ?? [])
-                  .map(
-                    (item) => {
-                      'id': item['id'],
-                      'name': item['name'],
-                      'phone': item['phone'],
-                      'created_at': item['created_at'],
-                    },
-                  )
-                  .toList()
-                  .cast<Map<String, dynamic>>();
+      if (mounted) {
+        setState(() {
+          _doctorName = user.fullName;
 
-          // Map upcoming appointments
-          _upcomingAppointments = (data['upcoming_appointments'] as List)
-              .map((item) {
-                return Appointment(
-                  id: int.parse(item['id'].toString()),
-                  patientId: int.parse(item['patient_id'].toString()),
-                  doctorId: user.id,
-                  doctorName: _doctorName,
-                  patientName: item['patient_name'],
-                  appointmentDate: DateTime.parse(item['appointment_date']),
-                  appointmentTime: DateTime.parse(
-                    '1970-01-01 ${item['appointment_time']}',
-                  ),
-                  status: item['status'],
-                  consultationType: item['consultation_type'] ?? 'General',
-                  durationMinutes: 30, // Default
-                  feePaid: 0.0, // Default
-                  paymentStatus: 'pending', // Default
-                  createdAt: DateTime.now(), // Default
-                  updatedAt: DateTime.now(), // Default
-                );
-              })
-              .cast<Appointment>()
-              .toList();
+          if (statsResult['success'] == true) {
+            final data = statsResult['data'];
+            if (data != null) {
+              final stats = data['stats'] ?? data;
+              
+              _todayAppointments = int.tryParse(stats['todayAppointments']?.toString() ?? stats['today_appointments']?.toString() ?? '0') ?? 0;
+              _newPatients = int.tryParse(stats['newPatients']?.toString() ?? stats['new_patients']?.toString() ?? '0') ?? 0;
+              _totalPatients = int.tryParse(stats['totalPatients']?.toString() ?? stats['total_patients']?.toString() ?? '0') ?? 0;
+              _totalEarnings = num.tryParse(stats['totalEarnings']?.toString() ?? stats['total_earnings']?.toString() ?? '0') ?? 0;
 
-          // Map recent patients
-          _recentPatients = (data['recent_patients'] as List)
-              .map(
-                (item) => {
-                  'id': item['id'],
-                  'name': item['name'],
-                  'lastVisit': item['last_visit'] ?? 'N/A',
-                  'isNew': false, // Logic handled in query if needed
-                },
-              )
-              .toList()
-              .cast<Map<String, dynamic>>();
+              // Map recently added patients
+              final recentPatientsList = stats['recentlyAddedPatients'] ?? stats['recently_added_patients'] ?? [];
+              _recentlyAddedPatients = (recentPatientsList as List? ?? [])
+                      .map((item) => {
+                          'id': item['id'],
+                          'name': item['name'] ?? '${item['firstName'] ?? ''} ${item['lastName'] ?? ''}'.trim(),
+                          'phone': item['phone'],
+                          'created_at': item['created_at'] ?? item['createdAt'],
+                        })
+                      .toList()
+                      .cast<Map<String, dynamic>>();
+
+              // Map upcoming appointments
+              final upcomingList = stats['upcomingAppointments'] ?? stats['upcoming_appointments'] ?? [];
+              _upcomingAppointments = (upcomingList as List? ?? [])
+                  .map((item) => Appointment.fromJson(item))
+                  .toList();
+            }
+          }
+        });
+
+        // 🚀 FALLBACK: If stats are zero/empty, try to calculate from direct lists
+        if (_totalPatients == 0 || _todayAppointments == 0) {
+          final patientsResult = await DataService.getPatients();
+          final appointmentsResult = await DataService.getUserAppointments();
+          
+          if (mounted) {
+            setState(() {
+              if (patientsResult['success'] == true) {
+                final List patients = patientsResult['patients'] ?? [];
+                if (_totalPatients == 0) _totalPatients = patients.length;
+                
+                // Calculate new patients (e.g., added today)
+                if (_newPatients == 0) {
+                  final now = DateTime.now();
+                  _newPatients = patients.where((p) {
+                    final createdAtStr = p['createdAt'] ?? p['created_at'];
+                    if (createdAtStr != null) {
+                      final createdAt = DateTime.tryParse(createdAtStr.toString());
+                      return createdAt != null && 
+                             createdAt.year == now.year && 
+                             createdAt.month == now.month && 
+                             createdAt.day == now.day;
+                    }
+                    return false;
+                  }).length;
+                }
+              }
+
+              if (appointmentsResult['success'] == true) {
+                final List<Appointment> allApts = appointmentsResult['appointments'] ?? [];
+                if (_todayAppointments == 0) {
+                  final now = DateTime.now();
+                  _todayAppointments = allApts.where((apt) => 
+                    apt.appointmentDate.year == now.year &&
+                    apt.appointmentDate.month == now.month &&
+                    apt.appointmentDate.day == now.day
+                  ).length;
+                }
+                
+                if (_upcomingAppointments.isEmpty) {
+                  _upcomingAppointments = allApts.where((apt) => apt.status == AppointmentStatus.confirmed).toList();
+                }
+              }
+            });
+          }
         }
-
-        _isLoading = false;
-      });
+      }
+      
+      if (mounted) setState(() => _isLoading = false);
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -119,36 +156,139 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
   }
 
   void _showNotifications() {
-    var loc = AppLocalizations.of(context);
-    // ... (Keep existing implementation)
+    final loc = AppLocalizations.of(context);
+    final notificationService = NotificationService();
+
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         return Container(
-          padding: const EdgeInsets.all(16),
+          height: MediaQuery.of(context).size.height * 0.7,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                loc?.recentNotifications ?? 'الإشعارات',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: const Icon(Icons.calendar_today, color: Colors.blue),
-                title: const Text('موعد جديد مجدول'),
-                subtitle: const Text('علي محمد - غداً 10:00 ص'),
-                trailing: const Text('جديد'),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      loc?.recentNotifications ?? 'الإشعارات الأخيرة',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pushNamed(context, '/notifications'),
+                      child: Text(loc?.viewAll ?? 'عرض الكل'),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(),
+              Expanded(
+                child: FutureBuilder<Map<String, dynamic>>(
+                  future: notificationService.getNotifications(limit: 10),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    
+                    if (snapshot.hasError || snapshot.data?['success'] != true) {
+                      return Center(child: Text(loc?.errorLoadingData ?? 'خطأ في تحميل البيانات'));
+                    }
+
+                    final notifications = snapshot.data?['notifications'] as List<app_notification.Notification>? ?? [];
+
+                    if (notifications.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.notifications_none, size: 48, color: Colors.grey.shade400),
+                            const SizedBox(height: 12),
+                            Text(loc?.noNotifications ?? 'لا توجد إشعارات'),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      itemCount: notifications.length,
+                      separatorBuilder: (context, index) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final notification = notifications[index];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor:
+                                _getNotificationColor(notification.type.toString()).withOpacity(0.1),
+                            child: Icon(_getNotificationIcon(notification.type.toString()),
+                                color: _getNotificationColor(notification.type.toString()), size: 20),
+                          ),
+                          title: Text(
+                            notification.title,
+                            style: TextStyle(fontWeight: notification.isRead ? FontWeight.normal : FontWeight.bold),
+                          ),
+                          subtitle: Text(notification.message),
+                          trailing: Text(
+                            _formatTimeAgo(notification.timestamp), // Retained original logic as _formatDate and room.createdAt are not defined here.
+                            style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
             ],
           ),
         );
       },
     );
+  }
+
+  IconData _getNotificationIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'appointment': return Icons.calendar_today;
+      case 'chat': return Icons.chat;
+      case 'system': return Icons.info_outline;
+      case 'medical': return Icons.medical_services_outlined;
+      default: return Icons.notifications;
+    }
+  }
+
+  Color _getNotificationColor(String type) {
+    switch (type.toLowerCase()) {
+      case 'appointment': return Colors.blue;
+      case 'chat': return Colors.green;
+      case 'system': return Colors.orange;
+      case 'medical': return Colors.red;
+      default: return AppColors.primary;
+    }
+  }
+
+  String _formatTimeAgo(DateTime timestamp) {
+    final now = DateTime.now();
+    final difference = now.difference(timestamp);
+
+    if (difference.inMinutes < 1) return 'الآن';
+    if (difference.inMinutes < 60) return 'قبل ${difference.inMinutes} د';
+    if (difference.inHours < 24) return 'قبل ${difference.inHours} سا';
+    if (difference.inDays < 7) return 'قبل ${difference.inDays} يوم';
+    return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
   }
 
   Future<void> _showReportsDialog() async {
@@ -250,6 +390,15 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
           ),
           IconButton(
             onPressed: () {
+              Navigator.pushNamed(context, '/doctor-chat-rooms');
+            },
+            icon: const Icon(
+              Icons.chat_bubble_outline,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          IconButton(
+            onPressed: () {
               _showNotifications();
             },
             icon: const Icon(
@@ -304,7 +453,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                // Total Patients Row
+                // Total Patients and Revenue Row
                 Row(
                   children: [
                     Expanded(
@@ -317,6 +466,27 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                         onTap: () =>
                             Navigator.pushNamed(context, '/patient-list'),
                       ),
+                    ),
+                    const SizedBox(width: 16),
+                    Builder(
+                      builder: (context) {
+                        // Extra robust check for Dart Web
+                        final currentEarnings = _totalEarnings;
+                        final String displayValue = (currentEarnings is num) 
+                          ? currentEarnings.toStringAsFixed(0) 
+                          : '0';
+                        
+                        return Expanded(
+                          child: _buildStatCard(
+                            context,
+                            title: loc?.totalEarnings ?? 'إجمالي الدخل',
+                            value: '$displayValue ${loc?.currencyMru ?? 'د.ج'}',
+                            icon: Icons.account_balance_wallet,
+                            color: Colors.orange,
+                            onTap: () => Navigator.pushNamed(context, '/wallet'),
+                          ),
+                        );
+                      }
                     ),
                   ],
                 ),
@@ -658,7 +828,11 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
 
     return GestureDetector(
       onTap: () {
-        Navigator.pushNamed(context, '/doctor-chat', arguments: {'name': name});
+        Navigator.pushNamed(context, '/doctor-chat', arguments: {
+          'name': name, 
+          'id': appointment.patientId,
+          'patient_id': appointment.patientId
+        });
       },
       child: Container(
         width: 250,

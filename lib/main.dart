@@ -22,6 +22,7 @@ import 'screens/doctor/patient_file_screen.dart';
 import 'screens/doctor/doctor_chat_screen.dart';
 import 'screens/doctor/patient_list_screen.dart';
 import 'screens/doctor/doctor_register_screen.dart';
+import 'screens/doctor/chat_rooms_screen.dart';
 import 'screens/doctors_screen.dart';
 import 'screens/appointments_screen.dart';
 import 'screens/profile_screen.dart';
@@ -29,9 +30,18 @@ import 'screens/notifications_screen.dart';
 import 'screens/cards_screen.dart';
 import 'screens/orders_screen.dart';
 import 'screens/wallet_screen.dart';
+import 'screens/patient_chat_screen.dart';
+import 'screens/patient_chat_rooms_screen.dart';
+
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint('Error loading .env file: $e');
+  }
   await DataService.init();
 
   // Initialize language service
@@ -124,6 +134,14 @@ class MyApp extends StatelessWidget {
             '/orders': (context) => const OrdersScreen(),
             '/wallet': (context) => const WalletScreen(),
             '/doctor-register': (context) => const DoctorRegisterScreen(),
+            '/doctor-chat-rooms': (context) => const ChatRoomsScreen(),
+            '/patient-chat-rooms': (context) => const PatientChatRoomsScreen(),
+            '/patient-chat': (context) {
+              final args =
+                  ModalRoute.of(context)!.settings.arguments
+                      as Map<String, dynamic>?;
+              return PatientChatScreen(doctor: args ?? {});
+            },
           },
         );
       },

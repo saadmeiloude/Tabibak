@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
 import '../services/data_service.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
+import '../services/health_tips_service.dart';
 import '../models/appointment.dart';
+import '../models/notification.dart' as app_notification;
+import '../models/health_tip.dart';
 import '../core/localization/app_localizations.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -15,8 +19,13 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String _userName = '';
   List<Appointment> _upcomingAppointments = [];
-  List<Map<String, dynamic>> _recentNotifications = [];
+  List<app_notification.Notification> _recentNotifications = [];
+  HealthTip? _dailyTip;
   bool _isLoading = true;
+  int _unreadCount = 0;
+
+  final NotificationService _notificationService = NotificationService();
+  final HealthTipsService _healthTipsService = HealthTipsService();
 
   @override
   void initState() {
@@ -27,49 +36,87 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadUserData() async {
     setState(() => _isLoading = true);
 
-    final user = await AuthService.getCurrentUser();
-    await DataService.init();
-    final appointmentsResult = await DataService.getUserAppointments();
+    try {
+      final user = await AuthService.getCurrentUser();
+      await DataService.init();
+      
+      // Load all data in parallel
+      final results = await Future.wait([
+        DataService.getUserAppointments(),
+        _notificationService.getNotifications(limit: 3),
+        _healthTipsService.getDailyTip(),
+      ]);
 
-    if (mounted) {
-      setState(() {
-        _userName = user?.fullName ?? '';
-        if (appointmentsResult['success']) {
-          _upcomingAppointments =
-              (appointmentsResult['appointments'] as List<Appointment>)
-                  .take(2)
-                  .toList();
-        }
+      final appointmentsResult = results[0] as Map<String, dynamic>;
+      final notificationsResult = results[1] as Map<String, dynamic>;
+      final tipResult = results[2] as Map<String, dynamic>;
 
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _userName = user?.fullName ?? '';
+          
+          if (appointmentsResult['success']) {
+            _upcomingAppointments =
+                (appointmentsResult['appointments'] as List<Appointment>)
+                    .take(2)
+                    .toList();
+          }
+
+          if (notificationsResult['success']) {
+            _recentNotifications = notificationsResult['notifications'];
+            _unreadCount = notificationsResult['unreadCount'] ?? 0;
+          }
+
+          if (tipResult['success']) {
+            _dailyTip = tipResult['tip'];
+          }
+
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading home data: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
-  List<Map<String, dynamic>> _getMockNotifications(BuildContext context) {
-    if (_recentNotifications.isNotEmpty) return _recentNotifications;
+  String _formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
 
-    var loc = AppLocalizations.of(context);
-    return [
-      {
-        'title': loc?.confirmAppointment ?? 'تأكيد الموعد',
-        'message': loc?.notifConfirmSara ?? 'تم تأكيد موعدك بنجاح',
-        'time': loc?.time1HourAgo ?? 'منذ ساعة',
-        'type': 'appointment',
-      },
-      {
-        'title': loc?.reminder ?? 'تذكير',
-        'message': loc?.notifReminderAhmed ?? 'موعدك غداً في الساعة 10:00 ص',
-        'time': loc?.time3HoursAgo ?? 'منذ 3 ساعات',
-        'type': 'reminder',
-      },
-      {
-        'title': loc?.specialOffer ?? 'عرض خاص',
-        'message': loc?.notifOffer20 ?? 'خصم 20% على الاستشارات الطبية',
-        'time': loc?.timeYesterday ?? 'أمس',
-        'type': 'offer',
-      },
-    ];
+    if (difference.inMinutes < 60) {
+      return 'منذ ${difference.inMinutes} دقيقة';
+    } else if (difference.inHours < 24) {
+      return 'منذ ${difference.inHours} ساعة';
+    } else if (difference.inDays == 1) {
+      return 'أمس';
+    } else if (difference.inDays < 7) {
+      return 'منذ ${difference.inDays} أيام';
+    } else {
+      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+    }
+  }
+
+  IconData _getTipIcon(String? iconName) {
+    switch (iconName?.toLowerCase()) {
+      case 'water_drop':
+      case 'water':
+        return Icons.water_drop;
+      case 'food':
+      case 'nutrition':
+        return Icons.restaurant;
+      case 'exercise':
+      case 'workout':
+        return Icons.fitness_center;
+      case 'sleep':
+        return Icons.bedtime;
+      case 'mental_health':
+        return Icons.psychology;
+      default:
+        return Icons.info_outline;
+    }
   }
 
   @override
@@ -91,13 +138,47 @@ class _HomeScreenState extends State<HomeScreen> {
         leading: Container(), // Hide back button if any
         actions: [
           IconButton(
-            onPressed: () {
-              _showNotifications();
-            },
+            onPressed: () => Navigator.pushNamed(context, '/notifications'),
+            icon: Stack(
+              children: [
+                const Icon(
+                  Icons.notifications_outlined,
+                  color: AppColors.textPrimary,
+                ),
+                if (_unreadCount > 0)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        '$_unreadCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => Navigator.pushNamed(context, '/patient-chat-rooms'),
             icon: const Icon(
-              Icons.notifications_outlined,
+              Icons.chat_bubble_outline,
               color: AppColors.textPrimary,
             ),
+            tooltip: 'الرسائل',
           ),
           InkWell(
             onTap: () {
@@ -373,8 +454,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                AppLocalizations.of(context)?.todaysTip ??
-                                    'نصيحة اليوم',
+                                _dailyTip?.title ?? (AppLocalizations.of(context)?.todaysTip ?? 'نصيحة اليوم'),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.primary,
@@ -382,8 +462,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                AppLocalizations.of(context)?.dailyTipContent ??
-                                    'تناول 8 أكواب من الماء يومياً للحفاظ على الترطيب.',
+                                _dailyTip?.content ?? (AppLocalizations.of(context)?.dailyTipContent ??
+                                    'تناول 8 أكواب من الماء يومياً للحفاظ على الترطيب.'),
                                 style: const TextStyle(fontSize: 14),
                               ),
                             ],
@@ -397,8 +477,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: Colors.blue.shade50,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(
-                            Icons.water_drop,
+                          child: Icon(
+                            _getTipIcon(_dailyTip?.icon),
                             color: Colors.blue,
                           ),
                         ),
@@ -418,7 +498,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
                   const SizedBox(height: 8),
-                  ..._getMockNotifications(context).take(3).map((notification) {
+                  ..._recentNotifications.map((notification) {
+                    final type = notification.type.toString().split('.').last.toLowerCase();
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(16),
@@ -437,13 +518,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: _getNotificationColor(
-                                notification['type'],
-                              ),
+                              color: _getNotificationColor(type),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Icon(
-                              _getNotificationIcon(notification['type']),
+                              _getNotificationIcon(type),
                               color: Colors.white,
                               size: 20,
                             ),
@@ -454,7 +533,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  notification['title'],
+                                  notification.title,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
@@ -462,15 +541,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  notification['message'],
+                                  notification.message,
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textSecondary,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  notification['time'],
+                                  notification.timeAgo, // Assuming 'timeAgo' is a property on your Notification model
                                   style: const TextStyle(
                                     fontSize: 10,
                                     color: AppColors.textSecondary,
@@ -619,10 +700,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ] else ...[
                 // ... list notifications
                 Expanded(
-                  child: ListView(
-                    children: _getMockNotifications(context).map((
-                      notification,
-                    ) {
+                  child: ListView.builder(
+                    itemCount: _recentNotifications.length,
+                    itemBuilder: (context, index) {
+                      final notification = _recentNotifications[index];
+                      final type = notification.type.toString().split('.').last.toLowerCase();
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.all(12),
@@ -635,13 +717,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: _getNotificationColor(
-                                  notification['type'],
-                                ),
+                                color: _getNotificationColor(type),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Icon(
-                                _getNotificationIcon(notification['type']),
+                                _getNotificationIcon(type),
                                 color: Colors.white,
                                 size: 16,
                               ),
@@ -652,17 +732,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    notification['title'],
+                                    notification.title,
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                   Text(
-                                    notification['message'],
+                                    notification.message,
                                     style: const TextStyle(fontSize: 12),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                   Text(
-                                    notification['time'],
+                                    _formatTimeAgo(notification.createdAt),
                                     style: const TextStyle(
                                       fontSize: 10,
                                       color: AppColors.textSecondary,
@@ -674,7 +756,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                       );
-                    }).toList(),
+                    },
                   ),
                 ),
               ],

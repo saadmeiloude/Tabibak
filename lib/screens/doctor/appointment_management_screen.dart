@@ -3,7 +3,10 @@ import '../../core/constants/colors.dart';
 import '../../services/data_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/appointment.dart';
+import '../../models/doctor.dart';
+import '../../core/models/enums.dart';
 import '../../core/localization/app_localizations.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 class AppointmentManagementScreen extends StatefulWidget {
   const AppointmentManagementScreen({super.key});
@@ -21,10 +24,17 @@ class _AppointmentManagementScreenState
   bool _isListView = true;
   bool _isLoading = true;
   int? _currentDoctorId;
+  String? _doctorName;
+  
+  // Calendar specific
+  CalendarFormat _calendarFormat = CalendarFormat.month;
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
 
   @override
   void initState() {
     super.initState();
+    _selectedDay = _focusedDay;
     _initData();
   }
 
@@ -32,10 +42,22 @@ class _AppointmentManagementScreenState
     setState(() => _isLoading = true);
     await DataService.init();
 
-    // Get Current User (Doctor)
+    // Get Current User (to check role)
     final user = await AuthService.getCurrentUser();
     if (user != null) {
-      _currentDoctorId = user.id;
+      // Fetch the real doctor ID from the doctor profile
+      final doctorResult = await DataService.getDoctorProfile();
+      if (doctorResult['success']) {
+        final doctor = doctorResult['doctor'] as Doctor;
+        _currentDoctorId = doctor.id;
+        _doctorName = doctor.name;
+        debugPrint('DEBUG: Initialized with Doctor ID: $_currentDoctorId (User ID was: ${user.id})');
+      } else {
+        // Fallback or error handling
+        debugPrint('DEBUG: Failed to fetch doctor profile, falling back to user.id: ${user.id}');
+        _currentDoctorId = user.id;
+        _doctorName = user.fullName;
+      }
     }
 
     // Load Data
@@ -47,7 +69,9 @@ class _AppointmentManagementScreenState
   Future<void> _loadAppointments() async {
     final result = await DataService.getUserAppointments();
     if (mounted && result['success']) {
-      _appointments = result['appointments'] as List<Appointment>;
+      setState(() {
+         _appointments = result['appointments'] as List<Appointment>;
+      });
     }
   }
 
@@ -206,12 +230,20 @@ class _AppointmentManagementScreenState
       time.minute,
     );
 
+    // Get selected patient name
+    final patient = _patients.firstWhere(
+      (p) => int.tryParse(p['id'].toString()) == patientId,
+      orElse: () => {},
+    );
+    final patientName = patient['full_name'] ?? 'Unknown Patient';
+
     final result = await DataService.createAppointment(
       doctorId: doctorId,
       patientId: patientId,
-      appointmentDate: date,
-      appointmentTime: dateTime,
-      symptoms: symptoms,
+      appointmentDate: dateTime,
+      notes: symptoms,
+      doctorName: _doctorName,
+      patientName: patientName,
     );
 
     if (mounted) {
@@ -296,32 +328,98 @@ class _AppointmentManagementScreenState
   }
 
   Future<void> _rescheduleAppointment(Appointment appointment) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          AppLocalizations.of(context)?.calendarViewUnderDev ??
-              'خاصية إعادة الجدولة قيد التطوير',
-        ),
-      ),
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: appointment.appointmentDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2101),
     );
+
+    if (pickedDate != null) {
+      // Parse initial time from string "HH:mm"
+      TimeOfDay initialTime = TimeOfDay.now();
+      try {
+        final parts = appointment.time.split(':');
+        if (parts.length == 2) {
+          initialTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+        }
+      } catch (e) {
+        debugPrint('Error parsing time: $e');
+      }
+
+      final TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: initialTime,
+      );
+
+      if (pickedTime != null) {
+        // ... (rest of the logic)
+        final newDateTime = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
+
+        final result = await DataService.updateAppointment(
+          appointmentId: appointment.id,
+          appointmentDate: newDateTime,
+          status: 'rescheduled', 
+        );
+
+        if (mounted) {
+          if (result['success']) {
+            await _loadAppointments();
+            ScaffoldMessenger.of(context).showSnackBar(
+               SnackBar(
+                content: Text(
+                  // AppLocalizations.of(context)?.rescheduleSuccess ?? 
+                  'تم إعادة جدولة الموعد بنجاح',
+                ),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result['message'] ?? 'فشل إعادة الجدولة'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    }
   }
 
   List<Appointment> _getFilteredAppointments() {
     return _appointments.where((appointment) {
+      // Filter by Calendar selection if not list view or if explicit filter
+      if (!_isListView && _selectedDay != null) {
+         return isSameDay(appointment.appointmentDate, _selectedDay);
+      }
+
+      if (_selectedFilter == 'custom' && _selectedDay != null) {
+        return isSameDay(appointment.appointmentDate, _selectedDay);
+      }
+      
       if (_selectedFilter == 'today') {
         final now = DateTime.now();
-        return appointment.appointmentDate.year == now.year &&
-            appointment.appointmentDate.month == now.month &&
-            appointment.appointmentDate.day == now.day;
+        return isSameDay(appointment.appointmentDate, now);
       }
-      // Add 'Tomorrow' etc.
+      
       if (_selectedFilter == 'tomorrow') {
         final tomorrow = DateTime.now().add(const Duration(days: 1));
-        return appointment.appointmentDate.year == tomorrow.year &&
-            appointment.appointmentDate.month == tomorrow.month &&
-            appointment.appointmentDate.day == tomorrow.day;
+        return isSameDay(appointment.appointmentDate, tomorrow);
       }
       return true;
+    }).toList();
+  }
+
+  List<Appointment> _getEventsForDay(DateTime day) {
+    return _appointments.where((appointment) {
+      return isSameDay(appointment.appointmentDate, day);
     }).toList();
   }
 
@@ -385,17 +483,23 @@ class _AppointmentManagementScreenState
                             onTap: () => setState(() => _isListView = false),
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: !_isListView
+                                    ? AppColors.primary
+                                    : Colors.transparent, // Corrected logic
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                               child: Center(
                                 child: Text(
                                   AppLocalizations.of(context)?.calendar ??
                                       'تقويم',
                                   style: TextStyle(
-                                    color: _isListView
-                                        ? AppColors.textSecondary
-                                        : AppColors.primary,
-                                    fontWeight: _isListView
-                                        ? FontWeight.normal
-                                        : FontWeight.bold,
+                                    color: !_isListView
+                                        ? Colors.white
+                                        : AppColors.textSecondary,
+                                    fontWeight: !_isListView
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
                                   ),
                                 ),
                               ),
@@ -408,35 +512,73 @@ class _AppointmentManagementScreenState
                 ),
                 const SizedBox(height: 16),
 
-                // Horizontal Filter Chips
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      _buildFilterChip(
-                        AppLocalizations.of(context)?.all ?? 'الكل',
-                        'all',
-                        _selectedFilter == 'all',
-                      ),
-                      const SizedBox(width: 8),
-                      _buildFilterChip(
-                        AppLocalizations.of(context)?.today ?? 'اليوم',
-                        'today',
-                        _selectedFilter == 'today',
-                      ),
-                      const SizedBox(width: 8),
-                      _buildFilterChip(
-                        AppLocalizations.of(context)?.tomorrow ?? 'غداً',
-                        'tomorrow',
-                        _selectedFilter == 'tomorrow',
-                      ),
-                    ],
+                // Horizontal Filter Chips (Only show in List View for clarity, or adapt behavior)
+                if (_isListView) ...[
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        _buildFilterChip(
+                          AppLocalizations.of(context)?.all ?? 'الكل',
+                          'all',
+                          _selectedFilter == 'all',
+                        ),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(
+                          AppLocalizations.of(context)?.today ?? 'اليوم',
+                          'today',
+                          _selectedFilter == 'today',
+                        ),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(
+                          AppLocalizations.of(context)?.tomorrow ?? 'غداً',
+                          'tomorrow',
+                          _selectedFilter == 'tomorrow',
+                        ),
+                        const SizedBox(width: 8),
+                         GestureDetector(
+                          onTap: () async {
+                              final date = await showDatePicker(
+                                context: context,
+                                initialDate: _selectedDay ?? DateTime.now(),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2030),
+                              );
+                              if (date != null) {
+                                setState(() {
+                                  _selectedDay = date;
+                                  _selectedFilter = 'custom';
+                                });
+                              }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: _selectedFilter == 'custom' ? AppColors.primary : Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.calendar_month, size: 16, color: _selectedFilter == 'custom' ? Colors.white : AppColors.textPrimary),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'تاريخ',
+                                  style: TextStyle(
+                                    color: _selectedFilter == 'custom' ? Colors.white : AppColors.textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
+                ],
 
-                // Appointments List
+                // Appointments List or Calendar
                 Expanded(
                   child: _isListView
                       ? _buildAppointmentsList()
@@ -454,12 +596,22 @@ class _AppointmentManagementScreenState
 
   Widget _buildAppointmentsList() {
     final filteredAppointments = _getFilteredAppointments();
+    
+    // Reverse events to show upcoming events correctly if needed, or sort
+    // filteredAppointments.sort((a, b) => a.appointmentDate.compareTo(b.appointmentDate));
 
     if (filteredAppointments.isEmpty) {
       return Center(
-        child: Text(
-          AppLocalizations.of(context)?.noAppointments ?? 'لا توجد مواعيد',
-          style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.event_busy, size: 64, color: Colors.grey.shade300),
+            const SizedBox(height: 16),
+            Text(
+              AppLocalizations.of(context)?.noAppointments ?? 'لا توجد مواعيد',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+            ),
+          ],
         ),
       );
     }
@@ -471,19 +623,68 @@ class _AppointmentManagementScreenState
         final appointment = filteredAppointments[index];
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
-          child: _buildAppointmentCard(context, appointment: appointment),
+          child: _buildAppointmentCard(context: context, appointment: appointment),
         );
       },
     );
   }
 
   Widget _buildCalendarView() {
-    return Center(
-      child: Text(
-        AppLocalizations.of(context)?.calendarViewUnderDev ??
-            'عرض التقويم قيد التطوير',
-        style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
-      ),
+    return Column(
+      children: [
+        TableCalendar<Appointment>(
+          firstDay: DateTime.utc(2020, 10, 16),
+          lastDay: DateTime.utc(2030, 3, 14),
+          focusedDay: _focusedDay,
+          calendarFormat: _calendarFormat,
+          selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+          eventLoader: _getEventsForDay,
+          startingDayOfWeek: StartingDayOfWeek.monday,
+          calendarStyle: const CalendarStyle(
+            outsideDaysVisible: false,
+            markerDecoration: BoxDecoration(
+              color: AppColors.primary,
+              shape: BoxShape.circle,
+            ),
+          ),
+          onDaySelected: (selectedDay, focusedDay) {
+            if (!isSameDay(_selectedDay, selectedDay)) {
+              setState(() {
+                _selectedDay = selectedDay;
+                _focusedDay = focusedDay;
+              });
+            }
+          },
+          onFormatChanged: (format) {
+            if (_calendarFormat != format) {
+              setState(() {
+                _calendarFormat = format;
+              });
+            }
+          },
+          onPageChanged: (focusedDay) {
+            _focusedDay = focusedDay;
+          },
+        ),
+        const SizedBox(height: 8.0),
+        Expanded(
+          child: _getEventsForDay(_selectedDay ?? _focusedDay).isEmpty 
+          ? Center(child: Text('لا توجد مواعيد لهذا اليوم', style: TextStyle(color: Colors.grey)))
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _getEventsForDay(_selectedDay ?? _focusedDay).length,
+              itemBuilder: (context, index) {
+                return Padding(
+                   padding: const EdgeInsets.only(bottom: 16.0),
+                   child: _buildAppointmentCard(
+                    context: context, 
+                    appointment: _getEventsForDay(_selectedDay ?? _focusedDay)[index]
+                  ),
+                );
+              },
+            ),
+        ),
+      ],
     );
   }
 
@@ -506,13 +707,13 @@ class _AppointmentManagementScreenState
     );
   }
 
-  Widget _buildAppointmentCard(
-    BuildContext context, {
+  Widget _buildAppointmentCard({
+    required BuildContext context,
     required Appointment appointment,
   }) {
     Color statusColor = Colors.green;
-    bool isPending = appointment.status == 'pending';
-    bool isCancelled = appointment.status == 'cancelled';
+    bool isPending = appointment.status == AppointmentStatus.pending;
+    bool isCancelled = appointment.status == AppointmentStatus.cancelled;
 
     if (isPending) statusColor = Colors.orange;
     if (isCancelled) statusColor = Colors.grey;
@@ -581,7 +782,7 @@ class _AppointmentManagementScreenState
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        appointment.status,
+                        appointment.status.toString().split('.').last,
                         style: TextStyle(color: statusColor, fontSize: 12),
                       ),
                     ],

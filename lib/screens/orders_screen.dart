@@ -4,6 +4,7 @@ import '../core/constants/mauritanian_constants.dart';
 import '../services/data_service.dart';
 import '../services/auth_service.dart';
 import '../models/appointment.dart';
+import '../core/models/enums.dart';
 import 'package:intl/intl.dart';
 
 class OrdersScreen extends StatefulWidget {
@@ -48,13 +49,13 @@ class _OrdersScreenState extends State<OrdersScreen>
 
         setState(() {
           _activeOrders = allAppointments
-              .where((a) => a.status == 'pending' || a.status == 'confirmed')
+              .where((a) => a.status == AppointmentStatus.pending || a.status == AppointmentStatus.confirmed)
               .toList();
           _completedOrders = allAppointments
-              .where((a) => a.status == 'completed')
+              .where((a) => a.status == AppointmentStatus.completed)
               .toList();
           _cancelledOrders = allAppointments
-              .where((a) => a.status == 'cancelled')
+              .where((a) => a.status == AppointmentStatus.cancelled)
               .toList();
           _isLoading = false;
         });
@@ -295,7 +296,7 @@ class _OrdersScreenState extends State<OrdersScreen>
               ),
               Row(
                 children: [
-                  if (order.status == 'confirmed' || order.status == 'pending')
+                  if (order.status == AppointmentStatus.confirmed || order.status == AppointmentStatus.pending)
                     TextButton(
                       onPressed: () {
                         _cancelOrder(order.id);
@@ -335,33 +336,33 @@ class _OrdersScreenState extends State<OrdersScreen>
     );
   }
 
-  Color _getStatusColor(String status) {
+  Color _getStatusColor(AppointmentStatus status) {
     switch (status) {
-      case 'confirmed':
+      case AppointmentStatus.confirmed:
         return Colors.green;
-      case 'pending':
+      case AppointmentStatus.pending:
         return Colors.orange;
-      case 'completed':
+      case AppointmentStatus.completed:
         return Colors.blue;
-      case 'cancelled':
+      case AppointmentStatus.cancelled:
         return Colors.red;
       default:
         return Colors.grey;
     }
   }
 
-  String _getStatusText(String status) {
+  String _getStatusText(AppointmentStatus status) {
     switch (status) {
-      case 'confirmed':
+      case AppointmentStatus.confirmed:
         return 'مؤكد';
-      case 'pending':
+      case AppointmentStatus.pending:
         return 'في الانتظار';
-      case 'completed':
+      case AppointmentStatus.completed:
         return 'مكتمل';
-      case 'cancelled':
+      case AppointmentStatus.cancelled:
         return 'ملغي';
       default:
-        return status;
+        return status.toString().split('.').last;
     }
   }
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
 import '../widgets/custom_button.dart';
-import '../services/api_service.dart';
+import '../core/api/api_client.dart';
 import '../core/localization/app_localizations.dart';
 
 class CardsScreen extends StatefulWidget {
@@ -24,13 +24,9 @@ class _CardsScreenState extends State<CardsScreen> {
   Future<void> _fetchCards() async {
     setState(() => _isLoading = true);
     try {
-      final response = await ApiService.request(
-        endpoint: 'api/cards/list.php',
-        method: 'GET',
-        requiresAuth: true,
-      );
-      final result = ApiService.handleResponse(response);
-      if (result['success']) {
+      final response = await ApiClient().get('/cards');
+      final result = response.data;
+      if (result['success'] == true) {
         setState(() {
           _cards = List<Map<String, dynamic>>.from(result['data']);
           _isLoading = false;
@@ -302,14 +298,9 @@ class _CardsScreenState extends State<CardsScreen> {
 
   Future<void> _setAsDefault(dynamic id) async {
     try {
-      final response = await ApiService.request(
-        endpoint: 'api/cards/set_default.php',
-        method: 'POST',
-        data: {'id': id},
-        requiresAuth: true,
-      );
-      final result = ApiService.handleResponse(response);
-      if (result['success']) {
+      final response = await ApiClient().post('/cards/default', data: {'id': id});
+      final result = response.data;
+      if (result['success'] == true) {
         _showSuccess(
           AppLocalizations.of(context)?.cardDefaultSuccess ??
               'تم تعيين البطاقة كافتراضية',
@@ -364,14 +355,9 @@ class _CardsScreenState extends State<CardsScreen> {
 
   Future<void> _deleteCard(dynamic id) async {
     try {
-      final response = await ApiService.request(
-        endpoint: 'api/cards/delete.php',
-        method: 'POST',
-        data: {'id': id},
-        requiresAuth: true,
-      );
-      final result = ApiService.handleResponse(response);
-      if (result['success']) {
+      final response = await ApiClient().delete('/cards/$id');
+      final result = response.data;
+      if (result['success'] == true) {
         _showSuccess(
           AppLocalizations.of(context)?.cardDeletedSuccess ?? 'تم حذف البطاقة',
         );
@@ -410,19 +396,18 @@ class _AddCardDialogState extends State<AddCardDialog> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await ApiService.request(
-        endpoint: 'api/cards/create.php',
-        method: 'POST',
+      final response = await ApiClient().post(
+        '/cards',
         data: {
-          'card_type': _cardType,
-          'card_number': _cardNumberController.text,
-          'holder_name': _holderNameController.text,
-          'expiry_date': _expiryDateController.text,
+          'cardType': _cardType,
+          'cardNumber': _cardNumberController.text,
+          'holderName': _holderNameController.text,
+          'expiryDate': _expiryDateController.text,
+          'cvv': _cvvController.text,
         },
-        requiresAuth: true,
       );
-      final result = ApiService.handleResponse(response);
-      if (result['success']) {
+      final result = response.data;
+      if (result['success'] == true) {
         widget.onCardAdded(result['data']);
       } else {
         setState(() => _isLoading = false);

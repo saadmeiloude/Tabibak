@@ -48,38 +48,55 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     try {
       final result = await DataService.getDoctors();
 
-      if (result['success']) {
-        final List<Doctor> doctorsList = result['doctors'];
+      if (mounted) {
+        if (result['success']) {
+          final List<Doctor> doctorsList = result['doctors'];
+          setState(() {
+            _doctors = doctorsList
+                .map(
+                  (doc) => {
+                    'id': doc.id,
+                    'name': doc.name ?? 'د. ${doc.id}',
+                    'specialty': doc.specialization,
+                    'distance': (2 + (doc.id % 5)).toString(), // Simulated distance
+                    'rating': doc.rating,
+                    'reviews': doc.totalReviews,
+                    'price': doc.consultationFee.toInt(),
+                    'image': 'assets/images/doctor1.png',
+                    'available': doc.isAvailable,
+                  },
+                )
+                .toList();
+
+            // Extract unique specialties dynamically
+            final Set<String> uniqueSpecialties = {};
+            for (var doc in doctorsList) {
+              if (doc.specialization.isNotEmpty) {
+                uniqueSpecialties.add(doc.specialization);
+              }
+            }
+            
+            final loc = AppLocalizations.of(context);
+            _specialties.clear();
+            _specialties.add('الكل'); // Always have 'All'
+            _specialties.addAll(uniqueSpecialties);
+            
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            _errorMessage = result['message'] ?? 'فشل تحميل الأطباء';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         setState(() {
-          _doctors = doctorsList
-              .map(
-                (doc) => {
-                  'id': doc
-                      .userId, // Use user_id as the doctor_id for appointments
-                  'name': doc.name ?? 'د. طبيب',
-                  'specialty': doc.specialization,
-                  'distance': '2',
-                  'rating': doc.rating,
-                  'reviews': doc.totalReviews,
-                  'price': doc.consultationFee.toInt(),
-                  'image': 'assets/images/doctor1.png',
-                  'available': doc.isAvailable,
-                },
-              )
-              .toList();
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _errorMessage = result['message'] ?? 'فشل تحميل الأطباء';
+          _errorMessage = 'خطأ في الاتصال: $e';
           _isLoading = false;
         });
       }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'خطأ في الاتصال: $e';
-        _isLoading = false;
-      });
     }
   }
 

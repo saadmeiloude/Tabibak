@@ -174,6 +174,9 @@ class AppLocalizations {
   String get recentNotifications => translate('recent_notifications');
   String get clearAllNotifications => translate('clear_all_notifications');
   String get noNotifications => translate('no_notifications');
+  String get noMessages => translate('no_notifications'); // Fallback
+  String get messages => translate('message'); // Fallback
+  String get errorLoadingData => translate('error'); // Fallback
   String get confirmAppointment => translate('confirm_appointment');
   String get reminder => translate('reminder');
   String get specialOffer => translate('special_offer');
@@ -370,6 +373,7 @@ class AppLocalizations {
   String get cardHolderShort => translate('card_holder_short');
   String get validThru => translate('valid_thru');
   String get wallet => translate('wallet');
+  String get totalEarnings => translate('total_earnings');
 }
 
 class _AppLocalizationsDelegate

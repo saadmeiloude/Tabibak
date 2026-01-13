@@ -1,16 +1,14 @@
 import 'dart:typed_data';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+import '../core/api/api_client.dart';
+import '../core/exceptions/api_exception.dart';
+import '../services/auth_service.dart';
+import 'package:http_parser/http_parser.dart';
+
 import '../models/appointment.dart';
 import '../models/doctor.dart';
 import '../models/medical_record.dart';
-import '../models/research.dart';
-import 'api_service.dart';
-
-// Helper function to safely parse double values should be kept if used internally by DataService, 
-// but models have their own now. DataService uses it?
-// Searching file... DataService uses _parseDouble? No, only models used it.
-// Actually, let's keep the imports clean.
+import '../models/article.dart';
 
 class DataService {
   // Initialization
@@ -21,241 +19,241 @@ class DataService {
   // Get doctor dashboard stats
   static Future<Map<String, dynamic>> getDoctorDashboardStats() async {
     try {
-      final response = await ApiService.request(
-        endpoint: 'api/doctor/dashboard_stats.php',
-        method:
-            'POST', // Using POST to easily send token in body if needed, though headers handle it
-        data: {}, // Token handled by ApiService automatically
-        requiresAuth: true,
-      );
-
-      final result = ApiService.handleResponse(response);
-      return result;
+      final response = await ApiClient().get('/doctor/dashboard/stats');
+      return {'success': true, 'data': response.data};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      print('DEBUG: getDoctorDashboardStats failed ($e). Returning empty stats to trigger local fallback.');
+      // Return success but empty stats so UI calculates from lists
+      return {
+        'success': true, 
+        'data': {
+          'stats': {
+            'todayAppointments': 0,
+            'newPatients': 0,
+            'totalPatients': 0,
+            'totalEarnings': 0,
+          }
+        }
+      };
     }
   }
 
-  // Get doctor profile
-  static Future<Map<String, dynamic>> getDoctorProfile() async {
-    try {
-      final response = await ApiService.request(
-        endpoint: 'api/doctor/profile.php',
-        method: 'GET',
-        requiresAuth: true,
-      );
-      return ApiService.handleResponse(response);
-    } catch (e) {
-      return {'success': false, 'message': e.toString()};
-    }
-  }
 
   // Update doctor profile
   static Future<Map<String, dynamic>> updateDoctorProfile(
     Map<String, dynamic> data,
   ) async {
     try {
-      final response = await ApiService.request(
-        endpoint: 'api/doctor/profile.php',
-        method: 'POST',
-        data: data,
-        requiresAuth: true,
-      );
-      return ApiService.handleResponse(response);
+      // Map UI keys (snake_case) to API keys (camelCase)
+      final Map<String, dynamic> apiData = {};
+      data.forEach((key, value) {
+        if (key == 'first_name') apiData['firstName'] = value;
+        else if (key == 'last_name') apiData['lastName'] = value;
+        else if (key == 'clinic_address') apiData['clinicAddress'] = value;
+        else if (key == 'experience_years') apiData['experienceYears'] = value;
+        else if (key == 'consultation_fee') apiData['consultationFee'] = value;
+        else if (key == 'specialty' || key == 'specialization') apiData['specialty'] = value;
+        else apiData[key] = value;
+      });
+
+      final response = await ApiClient().put('/doctors/profile', data: apiData);
+      return {'success': true, 'data': response.data};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {'success': false, 'message': e.toString().replaceAll('Exception: ', '')};
     }
   }
 
-  // Appointment Services
+  // ==================== APPOINTMENT SERVICES ====================
+
+  /// Create a new appointment (camelCase mapping)
   static Future<Map<String, dynamic>> createAppointment({
     required int doctorId,
     required DateTime appointmentDate,
-    required DateTime appointmentTime,
-    int? patientId, // Added optional patientId
-    String? symptoms,
-    String consultationType = 'online',
-    int durationMinutes = 30,
+    String? notes,
+    int? patientId,
+    String? doctorName,
+    String? patientName,
+    String? specialty,
+    String? department,
+    String? patientPhoto,
   }) async {
     try {
       final Map<String, dynamic> reqData = {
         'doctor_id': doctorId,
         'appointment_date': appointmentDate.toIso8601String().split('T')[0],
-        'appointment_time':
-            '${appointmentTime.hour.toString().padLeft(2, '0')}:${appointmentTime.minute.toString().padLeft(2, '0')}:00',
-        'symptoms': symptoms,
-        'consultation_type': consultationType,
-        'duration_minutes': durationMinutes,
+        'time': "${appointmentDate.hour.toString().padLeft(2, '0')}:${appointmentDate.minute.toString().padLeft(2, '0')}",
+        'notes': notes,
+        'doctor_name': doctorName,
+        'patient_name': patientName,
+        'specialty': specialty,
+        'department': department,
+        'patient_photo': patientPhoto,
+        'status': 'SCHEDULED', // Default status for new appointments
       };
 
       if (patientId != null) {
         reqData['patient_id'] = patientId;
       }
 
-      final response = await ApiService.request(
-        endpoint: 'api/appointments/create.php',
-        method: 'POST',
-        data: reqData,
-        requiresAuth: true,
-      );
+      print('DEBUG: createAppointment payload: $reqData');
 
-      final result = ApiService.handleResponse(response);
+      final response = await ApiClient().post('/appointments', data: reqData);
+      final appointment = Appointment.fromJson(response.data);
 
-      if (result['success']) {
-        final appointment = Appointment.fromJson(result['data']['appointment']);
-
-        return {
-          'success': true,
-          'appointment': appointment,
-          'message': result['message'],
-        };
-      } else {
-        return {
-          'success': false,
-          'message': result['error'] ?? 'Failed to create appointment',
-        };
-      }
+      return {
+        'success': true,
+        'appointment': appointment,
+        'message': 'Appointment created successfully',
+      };
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      print('DEBUG: createAppointment Error: $e');
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
+  /// Get all user appointments
   static Future<Map<String, dynamic>> getUserAppointments({int? userId}) async {
     try {
-      final response = await ApiService.request(
-        endpoint:
-            'api/appointments/list.php${userId != null ? '?user_id=$userId' : ''}',
-        method: 'GET',
-        requiresAuth: true,
+      final response = await ApiClient().get(
+        '/appointments',
+        queryParameters: userId != null ? {'userId': userId} : null,
       );
 
-      final result = ApiService.handleResponse(response);
+      // Backend returns List<AppointmentResponseDTO> directly
+      final List<dynamic> appointmentsJson = response.data is List
+          ? response.data
+          : (response.data is Map ? (response.data['data'] ?? []) : []);
 
-      if (result['success']) {
-        final appointments = (result['data']['appointments'] as List)
-            .map((json) => Appointment.fromJson(json))
-            .toList();
+      final appointments = appointmentsJson
+          .map((json) => json != null ? Appointment.fromJson(json) : null)
+          .whereType<Appointment>()
+          .toList();
 
-        return {'success': true, 'appointments': appointments};
-      } else {
-        return {
-          'success': false,
-          'message': result['error'] ?? 'Failed to fetch appointments',
-        };
-      }
+      return {'success': true, 'appointments': appointments};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      print('DEBUG: getUserAppointments Error: $e');
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
-  static Future<Map<String, dynamic>> cancelAppointment(
-    int appointmentId,
-  ) async {
+  /// Cancel appointment
+  static Future<Map<String, dynamic>> cancelAppointment(int appointmentId) async {
     try {
-      final response = await ApiService.request(
-        endpoint: 'api/appointments/cancel.php',
-        method: 'POST',
-        data: {'id': appointmentId},
-        requiresAuth: true,
-      );
-
-      return ApiService.handleResponse(response);
+      await ApiClient().delete('/appointments/$appointmentId');
+      return {'success': true, 'message': 'Appointment cancelled successfully'};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
+  /// Update appointment
   static Future<Map<String, dynamic>> updateAppointment({
     required int appointmentId,
     String? status,
     DateTime? appointmentDate,
-    DateTime? appointmentTime,
     String? notes,
   }) async {
     try {
-      final Map<String, dynamic> data = {'id': appointmentId};
-      if (status != null) data['status'] = status;
+      final Map<String, dynamic> data = {};
+      if (status != null) data['status'] = status.toUpperCase();
       if (appointmentDate != null) {
-        data['appointment_date'] = appointmentDate.toIso8601String().split(
-          'T',
-        )[0];
-      }
-      if (appointmentTime != null) {
-        data['appointment_time'] =
-            '${appointmentTime.hour.toString().padLeft(2, '0')}:${appointmentTime.minute.toString().padLeft(2, '0')}:00';
+        data['appointmentDate'] = appointmentDate.toIso8601String();
       }
       if (notes != null) data['notes'] = notes;
 
-      final response = await ApiService.request(
-        endpoint: 'api/appointments/update.php',
-        method: 'POST',
+      final response = await ApiClient().put(
+        '/appointments/$appointmentId',
         data: data,
-        requiresAuth: true,
       );
 
-      return ApiService.handleResponse(response);
+      return {'success': true, 'data': response.data};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
-  // Doctor Services
+  // ==================== DOCTOR SERVICES ====================
+
+  /// Get all doctors or filter by specialization
   static Future<Map<String, dynamic>> getDoctors({
     String? specialization,
   }) async {
     try {
-      final endpoint = specialization != null
-          ? 'api/doctors/list.php?specialization=$specialization'
-          : 'api/doctors/list.php';
-
-      final response = await ApiService.request(
-        endpoint: endpoint,
-        method: 'GET',
+      final response = await ApiClient().get(
+        '/doctors',
+        queryParameters:
+            specialization != null ? {'specialization': specialization} : null,
       );
 
-      final result = ApiService.handleResponse(response);
+      // Backend returns List<Doctor> directly
+      final List<dynamic> doctorsJson = response.data is List
+          ? response.data
+          : (response.data is Map ? (response.data['data'] ?? []) : []);
 
-      if (result['success']) {
-        final doctors = (result['data']['doctors'] as List)
-            .map((json) => Doctor.fromJson(json))
-            .toList();
+      print('DEBUG: getDoctors JSON: $doctorsJson');
 
-        return {'success': true, 'doctors': doctors};
-      } else {
-        return {
-          'success': false,
-          'message': result['error'] ?? 'Failed to fetch doctors',
-        };
-      }
+      final doctors = doctorsJson
+          .map((json) => json != null ? Doctor.fromJson(json) : null)
+          .whereType<Doctor>()
+          .toList();
+
+      return {'success': true, 'doctors': doctors};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      print('DEBUG: getDoctors Error: $e');
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
+  /// Get doctor details by ID
   static Future<Map<String, dynamic>> getDoctorDetails(int doctorId) async {
     try {
-      final response = await ApiService.request(
-        endpoint: 'api/doctors/details.php?id=$doctorId',
-        method: 'GET',
-      );
+      final response = await ApiClient().get('/doctors/$doctorId');
+      final doctor = Doctor.fromJson(response.data);
 
-      final result = ApiService.handleResponse(response);
-
-      if (result['success']) {
-        final doctor = Doctor.fromJson(result['data']['doctor']);
-
-        return {'success': true, 'doctor': doctor};
-      } else {
-        return {
-          'success': false,
-          'message': result['error'] ?? 'Failed to fetch doctor details',
-        };
-      }
+      return {'success': true, 'doctor': doctor};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
+  /// Get current logged-in doctor profile
+  static Future<Map<String, dynamic>> getDoctorProfile() async {
+    try {
+      final response = await ApiClient().get('/doctors/profile');
+      final doctor = Doctor.fromJson(response.data);
+      return {
+        'success': true,
+        'doctor': doctor,
+        'data': response.data, // For backward compatibility
+      };
+    } catch (e) {
+      print('DEBUG: getDoctorProfile Error: $e');
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
+    }
+  }
+
+  /// Rate a doctor
   static Future<Map<String, dynamic>> rateDoctor({
     required int doctorId,
     required int rating,
@@ -263,57 +261,54 @@ class DataService {
     int? appointmentId,
   }) async {
     try {
-      final response = await ApiService.request(
-        endpoint: 'api/doctors/rate.php',
-        method: 'POST',
+      final response = await ApiClient().post(
+        '/doctors/$doctorId/rate',
         data: {
-          'doctor_id': doctorId,
           'rating': rating,
-          'review_text': reviewText,
-          'appointment_id': appointmentId,
+          'reviewText': reviewText,
+          'appointmentId': appointmentId,
         },
-        requiresAuth: true,
       );
-      return ApiService.handleResponse(response);
+      return {'success': true, 'data': response.data};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
-  // Medical Record Services
+  // ==================== MEDICAL RECORD SERVICES ====================
+
+  /// Get patient medical records
   static Future<Map<String, dynamic>> getPatientRecords({
     int? patientId,
   }) async {
     try {
-      final endpoint = patientId != null
-          ? 'api/medical-records/list.php?patient_id=$patientId'
-          : 'api/medical-records/list.php';
-
-      final response = await ApiService.request(
-        endpoint: endpoint,
-        method: 'GET',
-        requiresAuth: true,
+      final response = await ApiClient().get(
+        '/medical-records',
+        queryParameters: patientId != null ? {'patient_id': patientId} : null,
       );
 
-      final result = ApiService.handleResponse(response);
+      final List<dynamic> recordsJson = response.data is List
+          ? response.data
+          : (response.data is Map ? (response.data['data'] ?? []) : []);
 
-      if (result['success']) {
-        final records = (result['data']['records'] as List)
-            .map((json) => MedicalRecord.fromJson(json))
-            .toList();
+      final records = recordsJson
+          .map((json) => json != null ? MedicalRecord.fromJson(json) : null)
+          .whereType<MedicalRecord>()
+          .toList();
 
-        return {'success': true, 'records': records};
-      } else {
-        return {
-          'success': false,
-          'message': result['error'] ?? 'Failed to fetch medical records',
-        };
-      }
+      return {'success': true, 'records': records};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
+  /// Create medical record
   static Future<Map<String, dynamic>> createMedicalRecord({
     required int doctorId,
     required String recordType,
@@ -326,134 +321,160 @@ class DataService {
     int? appointmentId,
   }) async {
     try {
+      final String today = DateTime.now().toIso8601String().split('T')[0];
       final Map<String, dynamic> reqData = {
-        'doctor_id': doctorId,
-        'record_type': recordType,
+        'recordType': recordType.toUpperCase(),
+        'record_type': recordType.toUpperCase(),
         'title': title,
-        'description': description,
-        'diagnosis': diagnosis,
-        'treatment': treatment,
-        'medications': medications,
-        'appointment_id': appointmentId,
-        'record_date': DateTime.now().toIso8601String().split('T')[0],
+        'recordDate': today,
+        'record_date': today,
+        
+        // Relationship fields - trying various formats to bypass mapping ambiguity
+        'doctorId': doctorId,
+        'doctor_id': doctorId,
+        'doctor': {'id': doctorId},
+        
+        'patientId': patientId,
+        'patient_id': patientId,
+        'patient': {'id': patientId},
       };
 
-      if (patientId != null) {
-        reqData['patient_id'] = patientId;
+      if (appointmentId != null && appointmentId != 0) {
+        reqData['appointmentId'] = appointmentId;
+        reqData['appointment_id'] = appointmentId;
+        reqData['appointment'] = {'id': appointmentId};
       }
 
-      final response = await ApiService.request(
-        endpoint: 'api/medical-records/create.php',
-        method: 'POST',
-        data: reqData,
-        requiresAuth: true,
-      );
+      if (description != null && description.isNotEmpty) reqData['description'] = description;
+      if (diagnosis != null && diagnosis.isNotEmpty) reqData['diagnosis'] = diagnosis;
+      if (treatment != null && treatment.isNotEmpty) reqData['treatment'] = treatment;
+      if (medications != null && medications.isNotEmpty) reqData['medications'] = medications;
 
-      final result = ApiService.handleResponse(response);
+      print('DEBUG: createMedicalRecord robust payload: $reqData');
 
-      if (result['success']) {
-        final record = MedicalRecord.fromJson(result['data']['record']);
+      final response = await ApiClient().post('/medical-records', data: reqData);
+      final record = MedicalRecord.fromJson(response.data);
 
-        return {
-          'success': true,
-          'record': record,
-          'message': result['message'],
-          'data': result['data'],
-        };
-      } else {
-        return {
-          'success': false,
-          'message': result['error'] ?? 'Failed to create medical record',
-        };
-      }
+      return {
+        'success': true,
+        'record': record,
+        'message': 'Medical record created successfully',
+      };
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
-  // Patient Services (Doctor View)
+  // ==================== PATIENT SERVICES ====================
+
+  /// Get all patients
   static Future<Map<String, dynamic>> getPatients() async {
     try {
-      final response = await ApiService.request(
-        endpoint: 'api/patients/list.php',
-        method: 'GET',
-        requiresAuth: true,
-      );
+      final response = await ApiClient().get('/patients');
 
-      final result = ApiService.handleResponse(response);
+      final List<dynamic> patientsJson = response.data is List
+          ? response.data
+          : (response.data is Map ? (response.data['data'] ?? []) : []);
 
-      if (result['success']) {
-        return {'success': true, 'patients': result['data']['patients']};
-      } else {
-        return {
-          'success': false,
-          'message': result['error'] ?? 'Failed to fetch patients',
-        };
-      }
+      return {'success': true, 'patients': patientsJson};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
+  /// Get patient details
   static Future<Map<String, dynamic>> getPatientDetails(int id) async {
     try {
-      final response = await ApiService.request(
-        endpoint: 'api/patients/details.php?id=$id',
-        method: 'GET',
-        requiresAuth: true,
-      );
-      return ApiService.handleResponse(response);
+      final response = await ApiClient().get('/patients/$id');
+      return {'success': true, 'data': response.data};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
+  /// Get patient ID by User ID
+  static Future<int?> getPatientIdByUserId(int userId) async {
+    try {
+      final response = await ApiClient().get('/patients');
+      final List<dynamic> patients = response.data is List
+          ? response.data
+          : (response.data is Map ? (response.data['data'] ?? []) : []);
+
+      for (var p in patients) {
+        final pUserId = p['userId'] ?? p['user_id'];
+        if (pUserId != null &&
+            int.tryParse(pUserId.toString()) == userId) {
+          return int.tryParse(p['id']?.toString() ?? '');
+        }
+      }
+    } catch (e) {
+      print('DEBUG: getPatientIdByUserId error: $e');
+    }
+    return null;
+  }
+
+  /// Save patient (create or update)
   static Future<Map<String, dynamic>> savePatient(
     Map<String, dynamic> patientData,
   ) async {
     try {
-      final response = await ApiService.request(
-        endpoint: 'api/patients/create.php', // or update if id exists
-        method: 'POST',
-        data: patientData,
-        requiresAuth: true,
-      );
+      bool isUpdate =
+          patientData.containsKey('id') && patientData['id'] != null;
 
-      return ApiService.handleResponse(response);
+      Response response;
+      if (isUpdate) {
+        response = await ApiClient()
+            .put('/patients/${patientData['id']}', data: patientData);
+      } else {
+        response = await ApiClient().post('/patients', data: patientData);
+      }
+
+      return {'success': true, 'data': response.data};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
+
+  // ==================== REPORTS ====================
 
   static Future<Map<String, dynamic>> getReportStats() async {
     try {
-      final response = await ApiService.request(
-        endpoint: 'api/reports/daily.php',
-        method: 'GET',
-        requiresAuth: true,
-      );
-      return ApiService.handleResponse(response);
+      final response = await ApiClient().get('/reports/daily');
+      return {'success': true, 'data': response.data};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
-  // Dashboard/Analytics Services
   static Future<Map<String, dynamic>> getDashboardData() async {
     try {
-      final response = await ApiService.request(
-        endpoint: 'api/dashboard/stats.php',
-        method: 'GET',
-        requiresAuth: true,
-      );
-
-      return ApiService.handleResponse(response);
+      final response = await ApiClient().get('/reports/stats');
+      return {'success': true, 'data': response.data};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
-  // Profile & Settings Services
+  // ==================== PROFILE & SETTINGS ====================
+
   static Map<String, bool> getNotificationSettings() {
     return {'notifications': true, 'email': true, 'sms': false};
   }
@@ -473,15 +494,23 @@ class DataService {
     required String phone,
   }) async {
     try {
-      final response = await ApiService.request(
-        endpoint: 'api/auth/update_profile.php',
-        method: 'POST',
-        data: {'name': name, 'email': email, 'phone': phone},
-        requiresAuth: true,
+      final trimmedName = name.trim();
+      final response = await ApiClient().put(
+        '/auth/profile',
+        data: {
+          'name': trimmedName,
+          'full_name': trimmedName,
+          'fullName': trimmedName,
+          'email': email,
+          'phone': phone,
+        },
       );
-      return ApiService.handleResponse(response);
+      return {'success': true, 'data': response.data};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
@@ -491,16 +520,54 @@ class DataService {
     String? fileName,
   }) async {
     try {
-      final response = await ApiService.uploadFile(
-        endpoint: 'api/auth/update_profile_image.php',
-        filePath: imagePath,
-        bytes: bytes,
-        fileName: fileName,
-        fileField: 'image',
+      final currentUser = await AuthService.getCurrentUser();
+      final formData = FormData.fromMap({
+        'userId': currentUser?.id,
+        'user_id': currentUser?.id,
+      });
+
+      if (bytes != null) {
+        final multipartFile = MultipartFile.fromBytes(
+          bytes,
+          filename: fileName ?? 'profile.jpg',
+        );
+        formData.files.add(MapEntry('file', multipartFile));
+        // Add duplicate entry with 'image' key
+        formData.files.add(MapEntry(
+          'image',
+          MultipartFile.fromBytes(
+            bytes,
+            filename: fileName ?? 'profile.jpg',
+          ),
+        ));
+      } else if (imagePath != null) {
+        formData.files.add(MapEntry(
+          'file',
+          await MultipartFile.fromFile(
+            imagePath,
+            filename: fileName,
+          ),
+        ));
+        // Add duplicate entry with 'image' key
+        formData.files.add(MapEntry(
+          'image',
+          await MultipartFile.fromFile(
+            imagePath,
+            filename: fileName,
+          ),
+        ));
+      }
+
+      final response = await ApiClient().post(
+        '/auth/profile-image',
+        data: formData,
       );
-      return ApiService.handleResponse(response);
+      return {'success': true, 'data': response.data};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
@@ -508,25 +575,38 @@ class DataService {
     String title,
     String? filePath, {
     Uint8List? bytes,
-    String recordType = 'test_result',
+    String recordType = 'TEST_RESULT',
     int? doctorId,
   }) async {
     try {
-      final response = await ApiService.uploadFile(
-        endpoint: 'api/medical-records/create.php',
-        filePath: filePath,
-        bytes: bytes,
-        fileName: title,
-        fileField: 'file',
-        fields: {
-          'title': title,
-          'record_type': recordType,
-          if (doctorId != null) 'doctor_id': doctorId.toString(),
-        },
+      final formData = FormData.fromMap({
+        'title': title,
+        'recordType': recordType,
+        if (doctorId != null) 'doctorId': doctorId,
+      });
+
+      if (bytes != null) {
+        formData.files.add(MapEntry(
+          'file',
+          MultipartFile.fromBytes(bytes, filename: title),
+        ));
+      } else if (filePath != null) {
+        formData.files.add(MapEntry(
+          'file',
+          await MultipartFile.fromFile(filePath, filename: title),
+        ));
+      }
+
+      final response = await ApiClient().post(
+        '/medical-records',
+        data: formData,
       );
-      return ApiService.handleResponse(response);
+      return {'success': true, 'data': response.data};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
@@ -542,43 +622,44 @@ class DataService {
     }
   }
 
-  // Research Services
+  // ==================== ARTICLE SERVICES ====================
+
+  /// Get articles (research)
   static Future<Map<String, dynamic>> getResearch({
     String? category,
     String? search,
     int? doctorId,
   }) async {
     try {
-      String endpoint = 'api/research/list.php?';
-      if (category != null) endpoint += 'category=$category&';
-      if (search != null) endpoint += 'search=$search&';
-      if (doctorId != null) endpoint += 'doctor_id=$doctorId&';
+      final Map<String, dynamic> queryParams = {};
+      if (category != null) queryParams['category'] = category;
+      if (search != null) queryParams['search'] = search;
+      if (doctorId != null) queryParams['doctorId'] = doctorId;
 
-      final response = await ApiService.request(
-        endpoint: endpoint,
-        method: 'GET',
-        requiresAuth: true,
+      final response = await ApiClient().get(
+        '/articles',
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
       );
 
-      final result = ApiService.handleResponse(response);
+      final List<dynamic> articlesJson = response.data is List
+          ? response.data
+          : (response.data is Map ? (response.data['data'] ?? []) : []);
 
-      if (result['success']) {
-        final researchList = (result['data'] as List)
-            .map((json) => Research.fromJson(json))
-            .toList();
+      final articles = articlesJson
+          .map((json) => json != null ? Article.fromJson(json) : null)
+          .whereType<Article>()
+          .toList();
 
-        return {'success': true, 'research': researchList};
-      } else {
-        return {
-          'success': false,
-          'message': result['error'] ?? 'Failed to fetch research',
-        };
-      }
+      return {'success': true, 'research': articles};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
+  /// Create article
   static Future<Map<String, dynamic>> createResearch({
     required String title,
     String? summary,
@@ -588,26 +669,27 @@ class DataService {
     bool isPublished = true,
   }) async {
     try {
-      final response = await ApiService.request(
-        endpoint: 'api/research/create.php',
-        method: 'POST',
+      final response = await ApiClient().post(
+        '/articles',
         data: {
           'title': title,
-          'summary': summary,
-          'content': content,
+          'content': content ?? summary,
           'category': category,
           'tags': tags,
-          'is_published': isPublished,
+          'published': isPublished,
         },
-        requiresAuth: true,
       );
 
-      return ApiService.handleResponse(response);
+      return {'success': true, 'data': response.data};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
+  /// Update article
   static Future<Map<String, dynamic>> updateResearch({
     required int id,
     String? title,
@@ -617,38 +699,36 @@ class DataService {
     bool? isPublished,
   }) async {
     try {
-      final Map<String, dynamic> data = {'id': id};
+      final Map<String, dynamic> data = {};
       if (title != null) data['title'] = title;
-      if (summary != null) data['summary'] = summary;
       if (content != null) data['content'] = content;
       if (category != null) data['category'] = category;
-      if (isPublished != null) data['is_published'] = isPublished;
+      if (isPublished != null) data['published'] = isPublished;
 
-      final response = await ApiService.request(
-        endpoint: 'api/research/update.php',
-        method: 'POST',
+      final response = await ApiClient().put(
+        '/articles/$id',
         data: data,
-        requiresAuth: true,
       );
 
-      return ApiService.handleResponse(response);
+      return {'success': true, 'data': response.data};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 
+  /// Delete article
   static Future<Map<String, dynamic>> deleteResearch(int id) async {
     try {
-      final response = await ApiService.request(
-        endpoint: 'api/research/delete.php',
-        method: 'POST',
-        data: {'id': id},
-        requiresAuth: true,
-      );
-
-      return ApiService.handleResponse(response);
+      await ApiClient().delete('/articles/$id');
+      return {'success': true, 'message': 'Article deleted successfully'};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {
+        'success': false,
+        'message': e.toString().replaceAll('Exception: ', '')
+      };
     }
   }
 }

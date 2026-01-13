@@ -5,6 +5,7 @@ import '../widgets/custom_text_field.dart';
 import '../services/auth_service.dart';
 import 'main_layout.dart';
 import '../core/localization/app_localizations.dart';
+import '../models/user.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -70,7 +71,8 @@ class _LoginScreenState extends State<LoginScreen> {
         });
 
         if (result['success']) {
-          final user = result['user'];
+          final userMap = result['user'];
+          final user = User.fromJson(userMap);
           if (user.userType == 'patient') {
             // Navigate to home screen
             Navigator.pushAndRemoveUntil(

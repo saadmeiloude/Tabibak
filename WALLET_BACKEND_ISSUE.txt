@@ -1,0 +1,35 @@
+=== WALLET BACKEND ERROR ===
+
+SYMPTOM:
+GET http://localhost:8087/api/wallets/balance returns 500 Internal Server Error
+
+FRONTEND STATUS:
+✅ Frontend code is correct - removed userId query parameter
+✅ Authentication token is being sent properly
+✅ Widget lifecycle errors fixed (mounted checks added)
+
+BACKEND ACTION REQUIRED:
+1. Check backend server logs for the exact error when /api/wallets/balance is called
+2. Verify that the WalletController endpoint exists and is properly configured
+3. Ensure the wallet tables exist in the database
+4. Run the SQL script from FIX_WALLET_ERROR.txt if not already done:
+   - Creates wallet table
+   - Creates wallet_transactions table  
+   - Initializes wallets for existing users
+
+EXPECTED BACKEND BEHAVIOR:
+- Endpoint should extract userId from JWT token
+- Query wallet by userId
+- Return wallet balance and statistics
+
+FRONTEND CALL:
+```dart
+final response = await WalletService.getWalletBalance(user.id);
+// This sends: GET /api/wallets/balance with Authorization header
+```
+
+NEXT STEPS:
+1. Check backend console for stack trace
+2. Verify database schema
+3. Execute wallet initialization SQL if needed
+4. Restart backend server

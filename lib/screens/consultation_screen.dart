@@ -75,18 +75,39 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
     // Let's assume it's an immediate booking (now).
     final now = DateTime.now();
 
-    DataService.createAppointment(
-      doctorId: doctorId,
-      appointmentDate: now,
-      appointmentTime: now,
-      symptoms: _messageController.text,
-      consultationType:
-          'online', // Both video and text are online consultations
-      durationMinutes: 30, // Default duration
-    ).then((result) {
-      Navigator.pop(context); // Close progress dialog
+    AuthService.getCurrentUser().then((user) async {
+      if (user == null) {
+        Navigator.pop(context); // Close dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('يرجى تسجيل الدخول أولاً'), backgroundColor: Colors.red),
+        );
+        return;
+      }
 
-      if (result['success']) {
+      // Resolve Patient ID from User ID
+      final patientId = await DataService.getPatientIdByUserId(user.id);
+      
+      if (patientId == null) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('ملف المريض غير موجود. يرجى استكمال بياناتك.'), backgroundColor: Colors.red),
+        );
+        return;
+      }
+
+      DataService.createAppointment(
+        doctorId: doctorId,
+        appointmentDate: now,
+        notes: _messageController.text,
+        patientId: patientId,
+        doctorName: widget.doctor?['name'],
+        patientName: user.fullName,
+        specialty: widget.doctor?['specialty'],
+        department: widget.doctor?['department'],
+      ).then((result) {
+        Navigator.pop(context); // Close progress dialog
+
+        if (result['success']) {
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -110,6 +131,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
           ),
         );
       }
+      });
     });
   }
 

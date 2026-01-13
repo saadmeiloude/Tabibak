@@ -1,0 +1,10 @@
+// Fix script for profile_screen.dart - User.fullName issue
+// The User model no longer has fullName as a parameter, it's a getter
+// Need to update profile_screen.dart line 607
+
+// Change from:
+// fullName: currentUser.fullName,
+
+// To:
+// firstName: currentUser.firstName,
+// lastName: currentUser.lastName,

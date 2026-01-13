@@ -1819,6 +1819,12 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'المحفظة'**
   String get wallet;
+
+  /// No description provided for @total_earnings.
+  ///
+  /// In ar, this message translates to:
+  /// **'إجمالي الدخل'**
+  String get total_earnings;
 }
 
 class _AppLocalizationsDelegate

@@ -3,6 +3,7 @@ import '../core/constants/colors.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
 import '../services/auth_service.dart';
+import '../core/api/token_storage.dart';
 import 'main_layout.dart';
 import '../core/localization/app_localizations.dart';
 
@@ -47,8 +48,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (value == null || value.isEmpty) {
       return 'الاسم الكامل مطلوب';
     }
-    if (value.length < 2) {
-      return 'الاسم يجب أن يكون حرفين على الأقل';
+    final words = value.trim().split(RegExp(r'\s+'));
+    if (words.length < 2) {
+      return 'يرجى إدخال الاسم الأول واسم العائلة (بينهما مسافة)';
     }
     return null;
   }
@@ -138,7 +140,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['message']),
+              content: Text(result['message'] ?? 'Registration successful'),
               backgroundColor: Colors.green,
             ),
           );
@@ -147,6 +149,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
           if (result['verification_required'] == true) {
             _showVerificationDialog(result['verification_method']);
           } else {
+             // Check for auto-login
+             final data = result['data'];
+             print('Registration successful, checking for auto-login data: $data');
+             
+             // Verify if data is Map and contains token/user
+             if (data is Map && data['token'] != null) {
+                print('Token found in response, saving...');
+                // Save token using the correct method (assuming only access_token for now, passing empty string for refresh_token if not present)
+                await TokenStorage.saveTokens(
+                  accessToken: data['token'], 
+                  refreshToken: data['refresh_token'] ?? ''
+                );
+                
+                // Try to find user object. It might be in 'user' or 'data' or top level
+                final userData = data['user'] ?? data['data'];
+                if (userData != null) {
+                   print('User data found, storing user session...');
+                   await AuthService.storeUser(userData);
+                } else {
+                   print('Warning: User data not found in response for auto-login.');
+                }
+             } else {
+                print('No token found in registration response. Redirecting to login.');
+             }
+             
             // Navigate to home screen
             Navigator.pushAndRemoveUntil(
               context,

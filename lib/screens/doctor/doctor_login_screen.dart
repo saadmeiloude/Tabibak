@@ -5,6 +5,8 @@ import '../../widgets/custom_text_field.dart';
 
 import '../../services/auth_service.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../models/user.dart';
+import '../../core/models/enums.dart';
 
 class DoctorLoginScreen extends StatefulWidget {
   const DoctorLoginScreen({super.key});
@@ -164,18 +166,27 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                                   _passwordController.text,
                                 );
 
-                                if (mounted) {
-                                  setState(() => _isLoading = false);
-                                  if (result['success']) {
-                                    // Check if user is actually a doctor
-                                    final user =
-                                        result['user']; // access user object from result
-                                    if (user.userType == 'doctor') {
-                                      Navigator.pushReplacementNamed(
-                                        context,
-                                        '/doctor-home',
-                                      );
-                                    } else {
+                                  if (mounted) {
+                                    setState(() => _isLoading = false);
+                                    if (result['success']) {
+                                      // Check if user is actually a doctor
+                                      final userMap = result['user'];
+                                      print('DEBUG: Doctor login - user map: $userMap');
+                                      final user = User.fromJson(userMap);
+                                      print('DEBUG: Doctor login - parsed user.role: ${user.role}');
+                                      print('DEBUG: Doctor login - parsed user.userType: ${user.userType}');
+                                      
+                                      // Check both userType and role (case insensitive)
+                                      final isDoctor = (user.userType?.toLowerCase() == 'doctor') || 
+                                                      (user.role == UserRole.doctor);
+                                      print('DEBUG: Doctor login - isDoctor: $isDoctor');
+                                      
+                                      if (isDoctor) {
+                                        Navigator.pushReplacementNamed(
+                                          context,
+                                          '/doctor-home',
+                                        );
+                                      } else {
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(

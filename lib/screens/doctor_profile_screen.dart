@@ -3,7 +3,9 @@ import 'package:share_plus/share_plus.dart';
 import '../core/constants/colors.dart';
 import '../widgets/custom_button.dart';
 import '../services/data_service.dart';
-import '../services/api_service.dart';
+import '../services/availability_service.dart';
+import '../models/time_slot.dart';
+import 'package:intl/intl.dart';
 
 class DoctorProfileScreen extends StatefulWidget {
   final Map<String, dynamic> doctor;
@@ -15,27 +17,73 @@ class DoctorProfileScreen extends StatefulWidget {
 }
 
 class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
+  final AvailabilityService _availabilityService = AvailabilityService();
+  bool _isLoadingAvailability = false;
+  List<DoctorAvailability> _availability = [];
   int _selectedDateIndex = 0;
-  String? _selectedTimeSlot;
+  TimeSlot? _selectedTimeSlot;
 
-  // Mock data for appointments
-  final List<Map<String, dynamic>> _dates = [
-    {
-      'day': 'اليوم',
-      'date': '20 أكتوبر',
-      'slots': ['10:00 ص', '11:30 ص'],
-    },
-    {
-      'day': 'غداً',
-      'date': '21 أكتوبر',
-      'slots': ['11:30 ص', '4:00 م'],
-    },
-    {
-      'day': 'الاثنين',
-      'date': '22 أكتوبر',
-      'slots': ['4:00 م', '5:30 م'],
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadAvailability();
+  }
+
+  Future<void> _loadAvailability() async {
+    final doctorIdRaw = widget.doctor['id'];
+    if (doctorIdRaw == null) return;
+
+    final int doctorId = doctorIdRaw is int
+        ? doctorIdRaw
+        : int.tryParse(doctorIdRaw.toString()) ?? 0;
+
+    if (doctorId == 0) return;
+
+    setState(() => _isLoadingAvailability = true);
+
+    final today = DateTime.now();
+    final endDate = today.add(const Duration(days: 3));
+
+    final result = await _availabilityService.getDoctorAvailability(
+      doctorId: doctorId,
+      startDate: today,
+      endDate: endDate,
+    );
+
+    if (mounted) {
+      setState(() {
+        if (result['success']) {
+          _availability = result['availability'];
+        }
+        _isLoadingAvailability = false;
+      });
+    }
+  }
+
+  String _formatSlotTime(String time24) {
+    final parts = time24.split(':');
+    final hour = int.parse(parts[0]);
+    final minute = parts[1];
+    if (hour < 12) return '$hour:$minute ص';
+    if (hour == 12) return '12:$minute م';
+    return '${hour - 12}:$minute م';
+  }
+
+  String _getDayLabel(DateTime date) {
+    final now = DateTime.now();
+    if (date.day == now.day && date.month == now.month && date.year == now.year)
+      return 'اليوم';
+    final tomorrow = now.add(const Duration(days: 1));
+    if (date.day == tomorrow.day &&
+        date.month == tomorrow.month &&
+        date.year == tomorrow.year)
+      return 'غداً';
+    return DateFormat('EEEE', 'ar').format(date);
+  }
+
+  String _getDateLabel(DateTime date) {
+    return DateFormat('d MMMM', 'ar').format(date);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -167,106 +215,111 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
             const SizedBox(height: 16),
             SizedBox(
               height: 140,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _dates.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 12),
-                itemBuilder: (context, index) {
-                  final dateInfo = _dates[index];
-                  final isSelected = _selectedDateIndex == index;
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedDateIndex = index;
-                        _selectedTimeSlot =
-                            null; // Reset time slot on date change
-                      });
-                    },
-                    child: Container(
-                      width: 140,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected
-                              ? AppColors.primary
-                              : Colors.transparent,
-                          width: 2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            dateInfo['day'],
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.textPrimary,
+              child: _isLoadingAvailability
+                  ? const Center(child: CircularProgressIndicator())
+                  : _availability.isEmpty
+                  ? const Center(child: Text('لا توجد مواعيد متاحة حالياً'))
+                  : ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _availability.length,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(width: 12),
+                      itemBuilder: (context, index) {
+                        final avail = _availability[index];
+                        final isSelected = _selectedDateIndex == index;
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedDateIndex = index;
+                              _selectedTimeSlot = null;
+                            });
+                          },
+                          child: Container(
+                            width: 140,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : Colors.transparent,
+                                width: 2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 4,
+                                ),
+                              ],
                             ),
-                          ),
-                          Text(
-                            dateInfo['date'],
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          const Divider(),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 4,
-                            alignment: WrapAlignment.center,
-                            children: (dateInfo['slots'] as List<String>).map((
-                              slot,
-                            ) {
-                              final isSlotSelected =
-                                  _selectedTimeSlot == slot && isSelected;
-                              return InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    _selectedDateIndex = index;
-                                    _selectedTimeSlot = slot;
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isSlotSelected
-                                        ? AppColors.primary
-                                        : Colors.green.shade50,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    slot,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: isSlotSelected
-                                          ? Colors.white
-                                          : Colors.green.shade700,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  _getDayLabel(DateTime.parse(avail.date)),
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? Colors.white
+                                        : AppColors.textPrimary,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                              );
-                            }).toList(),
+                                Text(
+                                  _getDateLabel(DateTime.parse(avail.date)),
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? Colors.white70
+                                        : AppColors.textSecondary,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                                const Divider(),
+                                avail.slots.isEmpty
+                                    ? const Text(
+                                        'مغلق',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey,
+                                        ),
+                                      )
+                                    : Wrap(
+                                        spacing: 4,
+                                        runSpacing: 4,
+                                        alignment: WrapAlignment.center,
+                                        children: avail.slots.take(2).map((
+                                          slot,
+                                        ) {
+                                          final timeStr = _formatSlotTime(
+                                            slot.startTime,
+                                          );
+                                          return Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.green.shade50,
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              timeStr,
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: Colors.green.shade700,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ),
+                              ],
+                            ),
                           ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
             const SizedBox(height: 32),
 

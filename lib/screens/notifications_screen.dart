@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../core/constants/colors.dart';
 import '../core/localization/app_localizations.dart';
+import '../services/notification_service.dart';
+import '../models/notification.dart' as app_notification;
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -10,44 +12,89 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  List<Map<String, dynamic>> _notifications = [
-    {
-      'title':
-          'appointment_title', // Will be ignored as we handle title by type
-      'message': 'notif_confirm_sara',
-      'time': 'time_1_hour_ago',
-      'type': 'appointment',
-      'isRead': false,
-    },
-    {
-      'title': 'reminder_title',
-      'message': 'notif_reminder_ahmed',
-      'time': 'time_3_hours_ago',
-      'type': 'reminder',
-      'isRead': false,
-    },
-    {
-      'title': 'offer_title',
-      'message': 'notif_offer_20',
-      'time': 'time_yesterday',
-      'type': 'offer',
-      'isRead': true,
-    },
-    {
-      'title': 'rating_title',
-      'message': 'notif_rate_ahmed',
-      'time': 'time_2_days_ago',
-      'type': 'rating',
-      'isRead': true,
-    },
-    {
-      'title': 'security_title',
-      'message': 'notif_security_login',
-      'time': 'time_3_days_ago',
-      'type': 'security',
-      'isRead': true,
-    },
-  ];
+  final NotificationService _notificationService = NotificationService();
+  List<app_notification.Notification> _notifications = [];
+  bool _isLoading = true;
+  int _unreadCount = 0;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await _notificationService.getNotifications();
+
+      if (mounted) {
+        if (result['success']) {
+          setState(() {
+            _notifications = result['notifications'];
+            _unreadCount = result['unreadCount'] ?? 0;
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            _errorMessage = result['message'] ?? 'فشل تحميل الإشعارات';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'خطأ في تحميل الإشعارات: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _markAsRead(int notificationId) async {
+    try {
+      await _notificationService.markAsRead(notificationId);
+      await _loadNotifications(); // Refresh the list
+    } catch (e) {
+      print('Error marking notification as read: $e');
+    }
+  }
+
+  Future<void> _markAllAsRead() async {
+    try {
+      final result = await _notificationService.markAllAsRead();
+      if (result['success']) {
+        await _loadNotifications(); // Refresh the list
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('تم وضع علامة على جميع الإشعارات كمقروءة'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error marking all as read: $e');
+    }
+  }
+
+  Future<void> _deleteNotification(int notificationId) async {
+    try {
+      final result = await _notificationService.deleteNotification(notificationId);
+      if (result['success']) {
+        await _loadNotifications(); // Refresh the list
+      }
+    } catch (e) {
+      print('Error deleting notification: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,66 +102,82 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(loc?.recentNotifications ?? 'الإشعارات'),
+        title: Text(
+          _unreadCount > 0
+              ? '${loc?.recentNotifications ?? 'الإشعارات'} ($_unreadCount)'
+              : (loc?.recentNotifications ?? 'الإشعارات'),
+        ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          if (_notifications.isNotEmpty)
+          if (_notifications.isNotEmpty && !_isLoading)
             IconButton(
-              onPressed: () {
-                _markAllAsRead();
-              },
+              onPressed: _markAllAsRead,
               icon: const Icon(Icons.done_all),
+              tooltip: 'وضع علامة على الكل كمقروء',
             ),
         ],
       ),
-      body: _notifications.isEmpty
-          ? _buildEmptyState()
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _notifications.length,
-              itemBuilder: (context, index) {
-                final notification = _notifications[index];
-                return _buildNotificationCard(notification, index);
-              },
-            ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+              ? _buildErrorState()
+              : _notifications.isEmpty
+                  ? _buildEmptyState()
+                  : RefreshIndicator(
+                      onRefresh: _loadNotifications,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _notifications.length,
+                        itemBuilder: (context, index) {
+                          final notification = _notifications[index];
+                          return _buildNotificationCard(notification);
+                        },
+                      ),
+                    ),
     );
   }
 
-  String _getLocalizedMessage(BuildContext context, String key) {
-    var loc = AppLocalizations.of(context);
-    switch (key) {
-      case 'notif_confirm_sara':
-        return loc?.notifConfirmSara ?? key;
-      case 'notif_reminder_ahmed':
-        return loc?.notifReminderAhmed ?? key;
-      case 'notif_offer_20':
-        return loc?.notifOffer20 ?? key;
-      case 'notif_rate_ahmed':
-        return loc?.notifRateAhmed ?? key;
-      case 'notif_security_login':
-        return loc?.notifSecurityLogin ?? key;
-      default:
-        return key;
-    }
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 64, color: Colors.red),
+          const SizedBox(height: 16),
+          Text(
+            _errorMessage ?? 'حدث خطأ',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.red),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: _loadNotifications,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+            ),
+            child: const Text('إعادة المحاولة'),
+          ),
+        ],
+      ),
+    );
   }
 
-  String _getLocalizedTime(BuildContext context, String key) {
-    var loc = AppLocalizations.of(context);
-    switch (key) {
-      case 'time_1_hour_ago':
-        return loc?.time1HourAgo ?? key;
-      case 'time_3_hours_ago':
-        return loc?.time3HoursAgo ?? key;
-      case 'time_yesterday':
-        return loc?.timeYesterday ?? key;
-      case 'time_2_days_ago':
-        return loc?.time2DaysAgo ?? key;
-      case 'time_3_days_ago':
-        return loc?.time3DaysAgo ?? key;
-      default:
-        return key;
+  String _formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inMinutes < 60) {
+      return 'منذ ${difference.inMinutes} دقيقة';
+    } else if (difference.inHours < 24) {
+      return 'منذ ${difference.inHours} ساعة';
+    } else if (difference.inDays == 1) {
+      return 'أمس';
+    } else if (difference.inDays < 7) {
+      return 'منذ ${difference.inDays} أيام';
+    } else {
+      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
     }
   }
 
@@ -148,107 +211,108 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildNotificationCard(Map<String, dynamic> notification, int index) {
-    final isRead = notification['isRead'] as bool;
-    final type = notification['type'] as String;
+  Widget _buildNotificationCard(app_notification.Notification notification) {
+    final isRead = notification.isRead;
+    final type = notification.type.toString().split('.').last.toLowerCase();
     var loc = AppLocalizations.of(context);
 
-    String title = notification['title'];
-    String message = _getLocalizedMessage(context, notification['message']);
-    String time = _getLocalizedTime(context, notification['time']);
-
-    // Localize title based on type
-    if (loc != null) {
-      switch (type) {
-        case 'appointment':
-          title = loc.confirmAppointment;
-          break;
-        case 'reminder':
-          title = loc.reminder;
-          break;
-        case 'offer':
-          title = loc.specialOffer;
-          break;
-        case 'rating':
-          title = loc.ratingRequest;
-          break;
-        case 'security':
-          title = loc.securityAlert;
-          break;
-      }
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: isRead ? Colors.white : Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isRead ? Colors.grey.shade200 : Colors.blue.shade200,
+    return Dismissible(
+      key: Key(notification.id.toString()),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: Colors.red,
+          borderRadius: BorderRadius.circular(12),
         ),
+        child: const Icon(Icons.delete, color: Colors.white),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: _getNotificationColor(type),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            _getNotificationIcon(type),
-            color: Colors.white,
-            size: 20,
-          ),
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
-            color: isRead ? AppColors.textPrimary : Colors.blue.shade800,
+      direction: DismissDirection.endToStart,
+      onDismissed: (direction) {
+        _deleteNotification(notification.id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم حذف الإشعار')),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: isRead ? Colors.white : Colors.blue.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isRead ? Colors.grey.shade200 : Colors.blue.shade200,
           ),
         ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text(
-              message,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 14,
-              ),
+        child: ListTile(
+          contentPadding: const EdgeInsets.all(16),
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _getNotificationColor(type),
+              borderRadius: BorderRadius.circular(8),
             ),
-            const SizedBox(height: 4),
-            Text(
-              time,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
-              ),
+            child: Icon(
+              _getNotificationIcon(type),
+              color: Colors.white,
+              size: 20,
             ),
-          ],
-        ),
-        trailing: !isRead
-            ? Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Colors.blue,
-                  shape: BoxShape.circle,
+          ),
+          title: Text(
+            notification.title,
+            style: TextStyle(
+              fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
+              color: isRead ? AppColors.textPrimary : Colors.blue.shade800,
+            ),
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 4),
+              Text(
+                notification.message,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
                 ),
-              )
-            : null,
-        onTap: () {
-          _markAsRead(index);
-        },
-        onLongPress: () {
-          _showOptionsDialog(index);
-        },
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _formatTimeAgo(notification.createdAt),
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          trailing: isRead
+              ? null
+              : Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: Colors.blue,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+          onTap: () {
+            if (!isRead) {
+              _markAsRead(notification.id);
+            }
+            
+            // Navigate based on type
+            if (type == 'message') {
+               // Assuming the notification data contains sender info (doctor)
+               // If payload is insufficient, we might send them to rooms list
+               Navigator.pushNamed(context, '/patient-chat-rooms');
+            } else if (type == 'appointment') {
+               Navigator.pushNamed(context, '/appointments');
+            }
+          },
+        ),
       ),
     );
   }
-
   Color _getNotificationColor(String type) {
     switch (type) {
       case 'appointment':
@@ -281,92 +345,5 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       default:
         return Icons.notifications;
     }
-  }
-
-  void _markAsRead(int index) {
-    setState(() {
-      _notifications[index]['isRead'] = true;
-    });
-  }
-
-  void _markAllAsRead() {
-    setState(() {
-      for (var notification in _notifications) {
-        notification['isRead'] = true;
-      }
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          AppLocalizations.of(context)?.markAllRead ?? 'تم تحديد الكل كمقروء',
-        ),
-      ),
-    );
-  }
-
-  void _showOptionsDialog(int index) {
-    var loc = AppLocalizations.of(context);
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.done),
-                title: Text(loc?.markAsRead ?? 'مقروء'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _markAsRead(index);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete),
-                title: Text(loc?.delete ?? 'حذف'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _deleteNotification(index);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.share),
-                title: Text(loc?.share ?? 'مشاركة'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _shareNotification(index);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _deleteNotification(int index) {
-    setState(() {
-      _notifications.removeAt(index);
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          AppLocalizations.of(context)?.notificationDeleted ?? 'تم حذف الإشعار',
-        ),
-      ),
-    );
-  }
-
-  void _shareNotification(int index) {
-    final notification = _notifications[index];
-    final shareText =
-        '${notification['title']}\n${notification['message']}\n${notification['time']}';
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${AppLocalizations.of(context)?.share}: $shareText'),
-      ),
-    );
   }
 }

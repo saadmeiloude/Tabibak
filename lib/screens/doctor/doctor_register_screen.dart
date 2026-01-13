@@ -137,8 +137,14 @@ class _DoctorRegisterScreenState extends State<DoctorRegisterScreen> {
                   hintText: loc?.fullName ?? 'الاسم الكامل',
                   controller: _fullNameController,
                   prefixIcon: Icons.person,
-                  validator: (v) =>
-                      v!.isEmpty ? (loc?.fullName ?? 'مطلوب') : null,
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return loc?.fullName ?? 'مطلوب';
+                    final words = v.trim().split(RegExp(r'\s+'));
+                    if (words.length < 2) {
+                      return 'يرجى إدخال الاسم الأول واللقب (بينهما مسافة)';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
 

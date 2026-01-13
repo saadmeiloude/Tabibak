@@ -4,7 +4,7 @@ import '../../core/constants/colors.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../services/api_service.dart';
+import '../../core/config/api_config.dart';
 import '../../services/data_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/user.dart';
@@ -33,6 +33,7 @@ class _DoctorSettingsScreenState extends State<DoctorSettingsScreen> {
   final _feesController = TextEditingController();
   final _educationController = TextEditingController();
   final _certificationsController = TextEditingController();
+  final _bioController = TextEditingController();
 
   @override
   void initState() {
@@ -41,28 +42,61 @@ class _DoctorSettingsScreenState extends State<DoctorSettingsScreen> {
   }
 
   Future<void> _loadProfile() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
+      // Fetch both User and Doctor data to ensure we have complete info
+      final user = await AuthService.getCurrentUser();
+      if (user == null) return; // Should not happen if logged in
+
       final result = await DataService.getDoctorProfile();
-      if (result['success']) {
-        final data = result['data'];
+      
+      final Map<String, dynamic> data = (result['success'] && result['data'] != null) 
+          ? result['data'] 
+          : {};
+      
+      if (mounted) {
         setState(() {
           _doctorData = data;
-          _fullNameController.text = data['full_name'] ?? '';
-          _phoneController.text = data['phone'] ?? '';
-          _addressController.text = data['address'] ?? '';
-          _specializationController.text = data['specialization'] ?? '';
-          _experienceController.text = (data['experience_years'] ?? '0')
-              .toString();
-          _feesController.text = (data['consultation_fee'] ?? '0').toString();
-          _educationController.text = data['education'] ?? '';
-          _certificationsController.text = data['certifications'] ?? '';
+          
+          // Name: Doctor Profile -> User Profile -> Empty
+          final name = data['name'] ?? data['full_name'] ?? data['fullName'];
+          _fullNameController.text = (name != null && name.toString().isNotEmpty) 
+              ? name.toString() 
+              : user.fullName;
+
+          // Phone: Doctor Profile -> User Profile -> Empty
+          final phone = data['phone'];
+          _phoneController.text = (phone != null && phone.toString().isNotEmpty) 
+              ? phone.toString() 
+              : (user.phone ?? '');
+
+          // Address: Doctor Clinic Address -> User Address -> Empty
+          final address = data['clinic_address'] ?? data['clinicAddress'] ?? data['address'];
+          _addressController.text = (address != null && address.toString().isNotEmpty) 
+              ? address.toString() 
+              : (user.address ?? '');
+
+          // Specialization
+          _specializationController.text = (data['specialty'] ?? data['specialization'] ?? '').toString();
+
+          // Experience
+          _experienceController.text = (data['experience_years'] ?? data['experienceYears'] ?? '0').toString();
+
+          // Fees
+          _feesController.text = (data['consultation_fee'] ?? data['consultationFee'] ?? '0').toString();
+
+          // Education & Certifications
+          _educationController.text = (data['education'] ?? '').toString();
+          _certificationsController.text = (data['certifications'] ?? '').toString();
+          _bioController.text = (data['bio'] ?? '').toString();
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading profile: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -71,15 +105,26 @@ class _DoctorSettingsScreenState extends State<DoctorSettingsScreen> {
   Future<void> _saveProfile() async {
     setState(() => _isSaving = true);
     try {
+      final trimmedName = _fullNameController.text.trim();
+      final nameParts = trimmedName.split(' ');
+      final firstName = nameParts.first;
+      final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+
+      // Prepare data using keys that DataService expects (mostly camelCase or snake_case handled by service)
       final data = {
-        'full_name': _fullNameController.text,
-        'phone': _phoneController.text,
-        'address': _addressController.text,
-        'specialization': _specializationController.text,
-        'experience_years': _experienceController.text,
-        'consultation_fee': _feesController.text,
-        'education': _educationController.text,
-        'certifications': _certificationsController.text,
+        'id': _doctorData?['id'],
+        'userId': _doctorData?['userId'] ?? _doctorData?['user_id'],
+        'name': trimmedName,
+        'firstName': firstName,
+        'lastName': lastName,
+        'phone': _phoneController.text.trim(),
+        'clinicAddress': _addressController.text.trim(),
+        'specialty': _specializationController.text.trim(),
+        'experienceYears': int.tryParse(_experienceController.text.trim()) ?? 0,
+        'consultationFee': double.tryParse(_feesController.text.trim()) ?? 0.0,
+        'education': _educationController.text.trim(),
+        'certifications': _certificationsController.text.trim(),
+        'bio': _bioController.text.trim(),
       };
 
       final result = await DataService.updateDoctorProfile(data);
@@ -174,9 +219,11 @@ class _DoctorSettingsScreenState extends State<DoctorSettingsScreen> {
                   CircleAvatar(
                     radius: 50,
                     backgroundColor: Colors.grey.shade200,
-                    backgroundImage: _doctorData?['profile_image'] != null
+                    backgroundImage: _doctorData?['profile_image'] != null && _doctorData!['profile_image'].toString().isNotEmpty
                         ? NetworkImage(
-                            '${ApiService.baseUrl}/${_doctorData!['profile_image']}',
+                            _doctorData!['profile_image'].toString().startsWith('http')
+                                ? _doctorData!['profile_image'].toString()
+                                : '${ApiConfig.baseUrl}/${_doctorData!['profile_image'].toString().startsWith('/') ? _doctorData!['profile_image'].toString().substring(1) : _doctorData!['profile_image']}',
                           )
                         : null,
                     child: _doctorData?['profile_image'] == null
@@ -188,6 +235,7 @@ class _DoctorSettingsScreenState extends State<DoctorSettingsScreen> {
                     right: 0,
                     child: InkWell(
                       onTap: () async {
+                        final messenger = ScaffoldMessenger.of(context);
                         final ImagePicker picker = ImagePicker();
                         final XFile? image = await picker.pickImage(
                           source: ImageSource.gallery,
@@ -213,17 +261,20 @@ class _DoctorSettingsScreenState extends State<DoctorSettingsScreen> {
                             final currentUser =
                                 await AuthService.getCurrentUser();
                             if (currentUser != null) {
+                              final nameParts = currentUser.fullName.split(' ');
                               final updatedUser = User(
                                 id: currentUser.id,
-                                fullName: currentUser.fullName,
+                                firstName: nameParts.isNotEmpty ? nameParts.first : '',
+                                lastName: nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '',
                                 email: currentUser.email,
                                 phone: currentUser.phone,
-                                userType: currentUser.userType,
-                                verificationMethod:
-                                    currentUser.verificationMethod,
+                                role: currentUser.role,
+                                verificationMethod: currentUser.verificationMethod,
                                 isVerified: currentUser.isVerified,
+                                isActive: currentUser.isActive,
                                 createdAt: currentUser.createdAt,
-                                profileImage: result['data']['profile_image'],
+                                updatedAt: currentUser.updatedAt,
+                                avatarUrl: result['data']['profile_image'],
                                 dateOfBirth: currentUser.dateOfBirth,
                                 gender: currentUser.gender,
                                 address: currentUser.address,
@@ -233,25 +284,25 @@ class _DoctorSettingsScreenState extends State<DoctorSettingsScreen> {
                             }
 
                             await _loadProfile(); // Refresh profile to show new image
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('تم تحديث الصورة بنجاح'),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
-                            }
+                            if (!mounted) return;
+                            
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('تم تحديث الصورة بنجاح'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
                           } else {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    result['message'] ?? 'فشل تحديث الصورة',
-                                  ),
-                                  backgroundColor: Colors.red,
+                            if (!mounted) return;
+                            
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  result['message'] ?? 'فشل تحديث الصورة',
                                 ),
-                              );
-                            }
+                                backgroundColor: Colors.red,
+                              ),
+                            );
                           }
                         }
                       },
@@ -341,6 +392,13 @@ class _DoctorSettingsScreenState extends State<DoctorSettingsScreen> {
               hintText: loc?.certificates ?? 'الشهادات',
               controller: _certificationsController,
               prefixIcon: Icons.card_membership,
+            ),
+            const SizedBox(height: 12),
+            CustomTextField(
+              hintText: loc?.about ?? 'نبذة شخصية',
+              controller: _bioController,
+              prefixIcon: Icons.info_outline,
+              keyboardType: TextInputType.multiline,
             ),
 
             const SizedBox(height: 32),
