@@ -33,6 +33,10 @@ try {
     $stmt3->execute();
     $revenueToday = $stmt3->fetchColumn() ?: 0;
 
+
+
+
+    
     echo json_encode([
         'success' => true,
         'data' => [

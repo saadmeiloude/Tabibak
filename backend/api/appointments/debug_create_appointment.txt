@@ -324,3 +324,36 @@
 
 2025-12-24 11:57:52 - Success! ID: 42
 ---
+2026-01-05 23:57:30 - Input: Array
+(
+    [doctor_id] => 25
+    [appointment_date] => 2026-01-15
+    [appointment_time] => 16:00:00
+    [symptoms] => Booking via Calendar
+    [consultation_type] => online
+    [duration_minutes] => 30
+)
+
+2026-01-05 23:57:30 - User: Array
+(
+    [id] => 8
+    [email] => nou7@gmail.com
+    [phone] => 32816779
+    [password] => $2y$10$f9NZ.TOXXBI490St8uRLc.l5StoYP2nUqFLLjfrjO6FmQQl2VPpWm
+    [full_name] => Saad
+    [user_type] => patient
+    [profile_image] => uploads/profiles/profile_8_1766221607.jpg
+    [date_of_birth] => 
+    [gender] => male
+    [address] => NKTT
+    [emergency_contact] => 
+    [verification_method] => sms
+    [is_verified] => 1
+    [is_active] => 1
+    [created_at] => 2025-12-16 16:21:49
+    [updated_at] => 2025-12-21 15:26:34
+)
+
+2026-01-05 23:57:30 - RESOLVED Doctor ID from 25 to 4
+2026-01-05 23:57:30 - Success! ID: 43
+---

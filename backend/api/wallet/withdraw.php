@@ -95,15 +95,15 @@ try {
     }
     
     // Create withdrawal request
-    // Removed user_id as per schema
     $request_query = "INSERT INTO withdrawal_requests 
-                      (wallet_id, amount, currency, withdrawal_method, 
+                      (user_id, wallet_id, amount, currency, withdrawal_method, 
                        bank_name, account_number, account_holder_name, mobile_money_number, status)
                       VALUES 
-                      (:wallet_id, :amount, 'MRU', :method,
+                      (:user_id, :wallet_id, :amount, 'MRU', :method,
                        :bank_name, :account_number, :account_holder, :mobile_number, 'pending')";
     
     $request_stmt = $db->prepare($request_query);
+    $request_stmt->bindParam(':user_id', $user_id);
     $request_stmt->bindParam(':wallet_id', $wallet['id']);
     $request_stmt->bindParam(':amount', $amount);
     $request_stmt->bindParam(':method', $withdrawal_method);
@@ -127,13 +127,12 @@ try {
     $transaction_ref = 'WTH-' . strtoupper(uniqid());
     
     // Create transaction record
-    // Removed user_id
     $trans_query = "INSERT INTO transactions 
-                    (transaction_ref, wallet_id, transaction_type, amount, currency, 
+                    (transaction_ref, user_id, wallet_id, transaction_type, amount, currency, 
                      balance_before, balance_after, status, payment_method, description, 
                      metadata, created_at)
                     VALUES 
-                    (:ref, :wallet_id, 'withdrawal', :amount, 'MRU', 
+                    (:ref, :user_id, :wallet_id, 'withdrawal', :amount, 'MRU', 
                      :balance_before, :balance_after, 'pending', :method, :description,
                      :metadata, NOW())";
     
@@ -148,8 +147,8 @@ try {
     
     // $ip_address = $_SERVER['REMOTE_ADDR'] ?? null;
     
-    $trans_stmt = $db->prepare($trans_query);
     $trans_stmt->bindParam(':ref', $transaction_ref);
+    $trans_stmt->bindParam(':user_id', $user_id);
     $trans_stmt->bindParam(':wallet_id', $wallet['id']);
     $trans_stmt->bindParam(':amount', $total_deduction);
     $trans_stmt->bindParam(':balance_before', $balance_before);

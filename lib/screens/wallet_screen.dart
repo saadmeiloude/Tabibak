@@ -248,13 +248,13 @@ class _WalletScreenState extends State<WalletScreen>
     }
   }
 
-  void _showWithdrawalDialog() {
+  void _showWithdrawalDialog() async {
+    final user = await AuthService.getCurrentUser();
     final amountController = TextEditingController();
-    String selectedMethod = 'bank_transfer';
-    final bankNameController = TextEditingController();
-    final accountNumberController = TextEditingController();
-    final accountHolderController = TextEditingController();
-    final mobileNumberController = TextEditingController();
+    final phoneController = TextEditingController(text: user?.phone ?? '');
+    String selectedMethod = 'Bankily';
+
+    if (!mounted) return;
 
     showDialog(
       context: context,
@@ -269,76 +269,53 @@ class _WalletScreenState extends State<WalletScreen>
                 TextField(
                   controller: amountController,
                   keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'المبلغ (أوقية)',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.attach_money),
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.attach_money),
                     helperText: 'الحد الأدنى: 100 أوقية',
                   ),
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'طريقة السحب:',
+                  'طريقة السحب (تطبيق بنكي):',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                RadioListTile<String>(
-                  title: const Text('تحويل بنكي'),
-                  value: 'bank_transfer',
-                  groupValue: selectedMethod,
+                DropdownButtonFormField<String>(
+                  value: selectedMethod,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.account_balance),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'Bankily', child: Text('Bankily')),
+                    DropdownMenuItem(value: 'Masrvi', child: Text('Masrvi')),
+                    DropdownMenuItem(value: 'Bimbank', child: Text('Bimbank')),
+                    DropdownMenuItem(value: 'Sedad', child: Text('Sedad')),
+                  ],
                   onChanged: (value) {
                     setDialogState(() {
                       selectedMethod = value!;
                     });
                   },
                 ),
-                if (selectedMethod == 'bank_transfer') ...[
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: bankNameController,
-                    decoration: const InputDecoration(
-                      labelText: 'اسم البنك',
-                      border: OutlineInputBorder(),
-                    ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'رقم الهاتف لاستلام المبلغ',
+                    hintText: 'أدخل رقم هاتفك في التطبيق البنكي',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.phone),
                   ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: accountNumberController,
-                    decoration: const InputDecoration(
-                      labelText: 'رقم الحساب',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: accountHolderController,
-                    decoration: const InputDecoration(
-                      labelText: 'اسم صاحب الحساب',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ],
-                RadioListTile<String>(
-                  title: const Text('محفظة إلكترونية'),
-                  value: 'mobile_money',
-                  groupValue: selectedMethod,
-                  onChanged: (value) {
-                    setDialogState(() {
-                      selectedMethod = value!;
-                    });
-                  },
                 ),
-                if (selectedMethod == 'mobile_money') ...[
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: mobileNumberController,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
-                      labelText: 'رقم المحفظة',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ],
+                const SizedBox(height: 8),
+                Text(
+                  'سيتم تحويل المبلغ إلى حسابك في $selectedMethod المرتبط برقم الهاتف المدخل.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
               ],
             ),
           ),
@@ -350,6 +327,8 @@ class _WalletScreenState extends State<WalletScreen>
             ElevatedButton(
               onPressed: () async {
                 final amount = double.tryParse(amountController.text);
+                final phone = phoneController.text.trim();
+
                 if (amount == null || amount < 100) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -359,14 +338,18 @@ class _WalletScreenState extends State<WalletScreen>
                   return;
                 }
 
+                if (phone.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('الرجاء إدخال رقم الهاتف')),
+                  );
+                  return;
+                }
+
                 Navigator.pop(context);
                 await _processWithdrawal(
                   amount: amount,
                   method: selectedMethod,
-                  bankName: bankNameController.text,
-                  accountNumber: accountNumberController.text,
-                  accountHolder: accountHolderController.text,
-                  mobileNumber: mobileNumberController.text,
+                  mobileNumber: phone,
                 );
               },
               child: const Text('سحب'),
